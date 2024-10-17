@@ -267,7 +267,7 @@ def add_worldbody_elements(root: ET.Element) -> None:
     )
 
 
-def add_actuators(root: ET.Element) -> None:
+def add_actuators(root: ET.Element, no_frc_limit: bool = False) -> None:
     actuator_element = ET.Element("actuator")
 
     # For each joint, add a motor actuator
@@ -281,12 +281,13 @@ def add_actuators(root: ET.Element) -> None:
         lower_limit = limit_element.get("lower") if limit_element is not None else None
         upper_limit = limit_element.get("upper") if limit_element is not None else None
 
-        if lower_limit is not None and upper_limit is not None:
+        if no_frc_limit:
+            ctrlrange = "-200 200"
+        elif lower_limit is not None and upper_limit is not None:
             ctrlrange = f"{lower_limit} {upper_limit}"
         else:
-            # Fallback to actuatorfrcrange if present, otherwise use a default range
             actuatorfrcrange = joint.attrib.get("actuatorfrcrange")
-            ctrlrange = actuatorfrcrange if actuatorfrcrange is not None else "-1.0 1.0"
+            ctrlrange = actuatorfrcrange if actuatorfrcrange is not None else "-1 1"
 
         ET.SubElement(
             actuator_element,
@@ -416,6 +417,52 @@ def add_cameras(root: ET.Element, distance: float = 3.0, height_offset: float = 
     )
 
 
+def add_visual_geom_logic(root: ET.Element) -> None:
+    """Add visual geom logic to the root element.
+
+    Args:
+        root: The root element of the MJCF file.
+    """
+    for body in root.findall(".//body"):
+        original_geoms = list(body.findall("geom"))
+        for geom in original_geoms:
+            geom.set("class", "visualgeom")
+            # Create a new geom element
+            new_geom = ET.Element("geom")
+            new_geom.set("type", geom.get("type") or "")
+            new_geom.set("rgba", geom.get("rgba") or "")
+
+            # Check if geom has mesh or is a box
+            if geom.get("mesh") is None:
+                if geom.get("type") == "box":
+                    new_geom.set("type", "box")
+                    new_geom.set("size", geom.get("size") or "")
+            else:
+                new_geom.set("mesh", geom.get("mesh") or "")
+            if geom.get("pos"):
+                new_geom.set("pos", geom.get("pos") or "")
+            if geom.get("quat"):
+                new_geom.set("quat", geom.get("quat") or "")
+
+            # Append the new geom to the body
+            index = list(body).index(geom)
+            body.insert(index + 1, new_geom)
+
+
+def add_default_position(root: ET.Element, default_position: str) -> None:
+    """Add a keyframe to the root element.
+
+    Args:
+        root: The root element of the MJCF file.
+        default_position: The default position of the robot.
+    """
+    keyframe = ET.Element("keyframe")
+    key = ET.SubElement(keyframe, "key")
+    key.set("name", "default")
+    key.set("qpos", default_position)
+    root.append(keyframe)
+
+
 def convert_urdf_to_mjcf(
     urdf_path: Union[str, Path],
     mjcf_path: Union[str, Path, None] = None,
@@ -423,21 +470,25 @@ def convert_urdf_to_mjcf(
     copy_meshes: bool = False,
     camera_distance: float = 3.0,
     camera_height_offset: float = 0.5,
+    no_frc_limit: bool = False,
+    default_position: Union[str, None] = None,
 ) -> None:
     """Convert a URDF file to an MJCF file.
 
     Args:
         urdf_path: The path to the URDF file.
         mjcf_path: The path to the MJCF file. If not provided, use the URDF
-            path with the extension replaced with ".mjcf".
+            path with the extension replaced with ".xml".
         no_collision_mesh: Do not include collision meshes.
         copy_meshes: Copy mesh files to the output MJCF directory if different
             from URDF directory.
         camera_distance: Distance of the fixed camera from the robot.
         camera_height_offset: Height offset of the fixed camera from the robot.
+        no_frc_limit: Do not include force limit for the actuators.
+        default_position: Default position for the robot.
     """
     urdf_path = Path(urdf_path)
-    mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".mjcf")
+    mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
     if not Path(urdf_path).exists():
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
@@ -483,11 +534,18 @@ def convert_urdf_to_mjcf(
                 # Update the file attribute to just the mesh name
                 mesh.attrib["file"] = mesh_name
 
+        if no_frc_limit:
+            for joint in root.iter("joint"):
+                if "actuatorfrcrange" in joint.attrib:
+                    del joint.attrib["actuatorfrcrange"]
+
         # Turn off internal collisions
         if not no_collision_mesh:
             for geom in root.iter("geom"):
                 geom.attrib["contype"] = str(1)
                 geom.attrib["conaffinity"] = str(0)
+                geom.attrib["density"] = str(0)
+                geom.attrib["group"] = str(1)
 
         # Manually set additional options.
         add_default(root)
@@ -501,8 +559,11 @@ def convert_urdf_to_mjcf(
         )
         add_root_body(root)
         add_worldbody_elements(root)
-        add_actuators(root)
+        add_actuators(root, no_frc_limit)
         add_sensors(root)
+        add_visual_geom_logic(root)
+        if default_position:
+            add_default_position(root, default_position)
 
         # Copy mesh files to the output directory.
         if copy_meshes:
@@ -525,6 +586,13 @@ def main() -> None:
     parser.add_argument("--copy-meshes", action="store_true", help="Copy mesh files to the output MJCF directory.")
     parser.add_argument("--camera-distance", type=float, default=3.0, help="Camera distance from the robot.")
     parser.add_argument("--camera-height-offset", type=float, default=0.5, help="Camera height offset.")
+    parser.add_argument("--no-frc-limit", action="store_true", help="Do not include force limit for the actuators.")
+    parser.add_argument(
+        "--default-position",
+        type=str,
+        default="0.0 0.0 0.63 0.0 0.0 0.0 1.0 -0.23 0.0 0.0 0.441 -0.258 -0.23 0.0 0.0 0.441 -0.258",
+        help="Default position for the robot.",
+    )
     args = parser.parse_args()
 
     convert_urdf_to_mjcf(
@@ -534,6 +602,8 @@ def main() -> None:
         copy_meshes=args.copy_meshes,
         camera_distance=args.camera_distance,
         camera_height_offset=args.camera_height_offset,
+        no_frc_limit=args.no_frc_limit,
+        default_position=args.default_position,
     )
 
 

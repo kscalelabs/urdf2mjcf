@@ -1,4 +1,3 @@
-<?xml version='1.0' encoding='utf-8'?>
 <robot name="robot">
   <link name="base">
     <inertial>
@@ -36,7 +35,7 @@
     <parent link="trunk" />
     <child link="L_buttock" />
     <axis xyz="0.0 1.0 0" />
-    <limit effort="120" lower="-3.14" upper="3.14" velocity="0" />
+    <limit effort="250" lower="-3.14" upper="3.14" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="L_buttock">
@@ -63,7 +62,7 @@
     <parent link="L_buttock" />
     <child link="L_leg" />
     <axis xyz="1.0 0.0 0.0" />
-    <limit effort="60" lower="-0.523" upper="2.093" velocity="0" />
+    <limit effort="100" lower="-0.523" upper="2.093" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="L_leg">
@@ -89,7 +88,7 @@
     <parent link="L_leg" />
     <child link="L_thigh" />
     <axis xyz="0.0 0.0 1.0" />
-    <limit effort="60" lower="-3.14" upper="3.14" velocity="0" />
+    <limit effort="100" lower="-3.14" upper="3.14" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="L_thigh">
@@ -115,7 +114,7 @@
     <parent link="L_thigh" />
     <child link="L_calf" />
     <axis xyz="0.0 1.0 0.0" />
-    <limit effort="120" lower="-1.919" upper="1.919" velocity="0" />
+    <limit effort="250" lower="-1.919" upper="1.919" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="L_calf">
@@ -141,8 +140,8 @@
     <parent link="L_calf" />
     <child link="L_foot" />
     <axis xyz="0.0 1.0 0.0" />
-    <limit effort="17" lower="-0.698" upper="0.698" velocity="0" />
-    <dynamics damping="0" friction="0" />
+    <limit effort="17" lower="-0.698" upper="0.698" velocity="10" />
+    <dynamics damping="0" friction="0.01" />
     </joint>
   <link name="L_foot">
     <inertial>
@@ -167,7 +166,7 @@
     <parent link="trunk" />
     <child link="R_buttock" />
     <axis xyz="0.0 1.0 0" />
-    <limit effort="120" lower="-3.14" upper="3.14" velocity="0" />
+    <limit effort="250" lower="-3.14" upper="3.14" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="R_buttock">
@@ -194,7 +193,7 @@
     <parent link="R_buttock" />
     <child link="R_leg" />
     <axis xyz="1.0 0.0 0.0" />
-    <limit effort="60" lower="-2.093" upper="0.523" velocity="0" />
+    <limit effort="100" lower="-2.093" upper="0.523" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="R_leg">
@@ -220,7 +219,7 @@
     <parent link="R_leg" />
     <child link="R_thigh" />
     <axis xyz="0.0 0.0 1.0" />
-    <limit effort="60" lower="-3.14" upper="3.14" velocity="0" />
+    <limit effort="100" lower="-3.14" upper="3.14" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="R_thigh">
@@ -246,7 +245,7 @@
     <parent link="R_thigh" />
     <child link="R_calf" />
     <axis xyz="0.0 1.0 0.0" />
-    <limit effort="120" lower="-1.919" upper="1.919" velocity="0" />
+    <limit effort="250" lower="-1.919" upper="1.919" velocity="10" />
     <dynamics damping="0" friction="0" />
     </joint>
   <link name="R_calf">
@@ -272,8 +271,8 @@
     <parent link="R_calf" />
     <child link="R_foot" />
     <axis xyz="0.0 1.0 0.0" />
-    <limit effort="17" lower="-0.698" upper="0.698" velocity="0" />
-    <dynamics damping="0" friction="0" />
+    <limit effort="17" lower="-0.698" upper="0.698" velocity="10" />
+    <dynamics damping="0" friction="0.01" />
     </joint>
   <link name="R_foot">
     <inertial>
@@ -293,7 +292,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="L_shoulder_y" type="revolute">
+  <joint name="L_shoulder_y" type="fixed">
     <origin rpy="0 0 0" xyz="0 0.255 0.45" />
     <parent link="trunk" />
     <child link="L_clav" />
@@ -320,7 +319,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="L_shoulder_x" type="revolute">
+  <joint name="L_shoulder_x" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 0" />
     <parent link="L_clav" />
     <child link="L_scapula" />
@@ -345,7 +344,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="L_shoulder_z" type="revolute">
+  <joint name="L_shoulder_z" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 0" />
     <parent link="L_scapula" />
     <child link="L_uarm" />
@@ -370,7 +369,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="L_elbow_x" type="revolute">
+  <joint name="L_elbow_x" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 -0.23" />
     <parent link="L_uarm" />
     <child link="L_farm" />
@@ -395,7 +394,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="R_shoulder_y" type="revolute">
+  <joint name="R_shoulder_y" type="fixed">
     <origin rpy="0 0 0" xyz="0 -0.255 0.45" />
     <parent link="trunk" />
     <child link="R_clav" />
@@ -422,7 +421,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="R_shoulder_x" type="revolute">
+  <joint name="R_shoulder_x" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 0" />
     <parent link="R_clav" />
     <child link="R_scapula" />
@@ -447,7 +446,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="R_shoulder_z" type="revolute">
+  <joint name="R_shoulder_z" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 0" />
     <parent link="R_scapula" />
     <child link="R_uarm" />
@@ -472,7 +471,7 @@
         </geometry>
       </collision>
     </link>
-  <joint name="R_elbow_x" type="revolute">
+  <joint name="R_elbow_x" type="fixed">
     <origin rpy="0.0 0.0 0.0" xyz="0 0 -0.23" />
     <parent link="R_uarm" />
     <child link="R_farm" />
