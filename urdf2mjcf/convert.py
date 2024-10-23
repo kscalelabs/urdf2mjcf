@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Union
+from typing import List, Union
 
 import mujoco
 
@@ -449,17 +449,25 @@ def add_visual_geom_logic(root: ET.Element) -> None:
             body.insert(index + 1, new_geom)
 
 
-def add_default_position(root: ET.Element, default_position: str) -> None:
+def add_default_position(root: ET.Element, default_position: List[float]) -> None:
     """Add a keyframe to the root element.
 
     Args:
         root: The root element of the MJCF file.
         default_position: The default position of the robot.
     """
+    actuators = root.find("actuator")
+    if actuators is None:
+        raise ValueError("No actuators found in the MJCF file.")
+
+    num_actuators = len(list(actuators.iter("motor")))
+    if len(default_position) != num_actuators:
+        raise ValueError(f"Default position must have {num_actuators} values, got {len(default_position)}.")
+
     keyframe = ET.Element("keyframe")
     key = ET.SubElement(keyframe, "key")
     key.set("name", "default")
-    key.set("qpos", default_position)
+    key.set("qpos", " ".join(map(str, default_position)))
     root.append(keyframe)
 
 
@@ -471,7 +479,7 @@ def convert_urdf_to_mjcf(
     camera_distance: float = 3.0,
     camera_height_offset: float = 0.5,
     no_frc_limit: bool = False,
-    default_position: Union[str, None] = None,
+    default_position: Union[List[float], None] = None,
 ) -> None:
     """Convert a URDF file to an MJCF file.
 
@@ -552,17 +560,13 @@ def convert_urdf_to_mjcf(
         add_compiler(root)
         add_option(root)
         add_assets(root)
-        add_cameras(
-            root,
-            distance=camera_distance,
-            height_offset=camera_height_offset,
-        )
+        add_cameras(root, distance=camera_distance, height_offset=camera_height_offset)
         add_root_body(root)
         add_worldbody_elements(root)
         add_actuators(root, no_frc_limit)
         add_sensors(root)
         add_visual_geom_logic(root)
-        if default_position:
+        if default_position is not None:
             add_default_position(root, default_position)
 
         # Copy mesh files to the output directory.
@@ -587,12 +591,7 @@ def main() -> None:
     parser.add_argument("--camera-distance", type=float, default=3.0, help="Camera distance from the robot.")
     parser.add_argument("--camera-height-offset", type=float, default=0.5, help="Camera height offset.")
     parser.add_argument("--no-frc-limit", action="store_true", help="Do not include force limit for the actuators.")
-    parser.add_argument(
-        "--default-position",
-        type=str,
-        default="0.0 0.0 0.63 0.0 0.0 0.0 1.0 -0.23 0.0 0.0 0.441 -0.258 -0.23 0.0 0.0 0.441 -0.258",
-        help="Default position for the robot.",
-    )
+    parser.add_argument("--default-position", type=str, help="Default position for the robot.")
     args = parser.parse_args()
 
     convert_urdf_to_mjcf(
@@ -603,7 +602,7 @@ def main() -> None:
         camera_distance=args.camera_distance,
         camera_height_offset=args.camera_height_offset,
         no_frc_limit=args.no_frc_limit,
-        default_position=args.default_position,
+        default_position=None if args.default_position is None else list(map(float, args.default_position.split())),
     )
 
 

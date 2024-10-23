@@ -169,6 +169,6 @@
   </sensor>
 
   <keyframe>
-    <key name="default" qpos="0.0 0.0 0.63 0.0 0.0 0.0 1.0 -0.23 0.0 0.0 0.441 -0.258 -0.23 0.0 0.0 0.441 -0.258" />
+    <key name="default" qpos="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" />
   </keyframe>
 </mujoco>

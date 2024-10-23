@@ -31,7 +31,7 @@ def test_conversion_no_frc_limit(tmpdir: Path) -> None:
         mjcf_path=mjcf_path,
         no_frc_limit=True,
         copy_meshes=False,
-        default_position="0.0 0.0 0.63 0.0 0.0 0.0 1.0 -0.23 0.0 0.0 0.441 -0.258 -0.23 0.0 0.0 0.441 -0.258",
+        default_position=[0.0] * 10,
     )
 
     # Compare the outputted MJCF with the expected XML
