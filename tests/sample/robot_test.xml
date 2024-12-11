@@ -13,6 +13,8 @@
     </default>
   </default>
 
+  <statistic meansize="0.17915529375241127" extent="1.3826505166446221" center="0.0005249932643319744 2.7589769057312363e-05 -0.045961782735088" />
+
   <asset>
     <mesh name="trunk" file="trunk.stl" scale="0.001 0.001 0.001" />
     <mesh name="buttock" file="buttock.stl" scale="0.001 0.001 0.001" />
@@ -39,79 +41,82 @@
     <body name="root" pos="0 0 0.63" quat="1 0 0 0">
       <freejoint name="root" />
       <site name="imu" size="0.01" pos="0 0 0" />
-      <geom type="mesh" mesh="trunk" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="trunk" />
-      <geom pos="0 0.255 0.45" quat="2.67949e-08 -1 0 0" type="mesh" mesh="clav" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="clav" pos="0 0.255 0.45" quat="2.67949e-08 -1 0 0" />
-      <geom pos="0 0.255 0.45" type="mesh" mesh="scap" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="scap" pos="0 0.255 0.45" />
-      <geom pos="0 0.255 0.45" type="mesh" mesh="uarm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="uarm" pos="0 0.255 0.45" />
-      <geom pos="0 0.255 0.22" type="mesh" mesh="farm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="farm" pos="0 0.255 0.22" />
-      <geom pos="0 -0.255 0.45" quat="1 0 0 0" type="mesh" mesh="clav" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="clav" pos="0 -0.255 0.45" quat="1 0 0 0" />
-      <geom pos="0 -0.255 0.45" type="mesh" mesh="scap" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="scap" pos="0 -0.255 0.45" />
-      <geom pos="0 -0.255 0.45" type="mesh" mesh="uarm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="uarm" pos="0 -0.255 0.45" />
-      <geom pos="0 -0.255 0.22" type="mesh" mesh="farm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-      <geom type="mesh" rgba="" mesh="farm" pos="0 -0.255 0.22" />
-      <body name="L_buttock" pos="0 0.1577 0">
-        <inertial pos="0.00129183 -0.00184328 2.27946e-05" quat="0.706341 0.707841 -0.00498313 -0.00434939" mass="1.29909" diaginertia="0.00209325 0.00150009 0.00131174" />
-        <joint name="L_hip_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14" />
-        <geom quat="2.67949e-08 1 0 0" type="mesh" mesh="buttock" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-        <geom type="mesh" rgba="" mesh="buttock" quat="2.67949e-08 1 0 0" />
-        <body name="L_leg">
-          <inertial pos="0.000708602 -2.24355e-05 -0.110352" quat="0.706876 0.0329943 0.0330587 0.705794" mass="1.33983" diaginertia="0.00375341 0.00352246 0.00184361" />
-          <joint name="L_hip_x" pos="0 0 0" axis="1 0 0" range="-0.523 2.093" />
-          <geom type="mesh" mesh="leg" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-          <geom type="mesh" rgba="" mesh="leg" />
-          <body name="L_thigh">
-            <inertial pos="-0.000407357 0.00130538 -0.291653" quat="0.711843 -0.00549725 0.000501512 0.702317" mass="1.93995" diaginertia="0.00607631 0.0044935 0.00293511" />
-            <joint name="L_hip_z" pos="0 0 0" axis="0 0 1" range="-3.14 3.14" />
-            <geom type="mesh" mesh="mthigh" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-            <geom type="mesh" rgba="" mesh="mthigh" />
-            <body name="L_calf" pos="0 0 -0.3">
-              <inertial pos="-0.00195352 -0.00434338 -0.134048" quat="0.599799 -0.00402307 0.025204 0.799743" mass="1.54477" diaginertia="0.00986297 0.00971929 0.00143814" />
-              <joint name="L_knee" pos="0 0 0" axis="0 1 0" range="-1.919 1.919" />
-              <geom type="mesh" mesh="mcalf" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-              <geom type="mesh" rgba="" mesh="mcalf" />
-              <body name="L_foot" pos="0 0 -0.3">
-                <inertial pos="0.0233665 0.014827 -0.0165314" quat="-0.00182247 0.713608 0.0126839 0.700428" mass="0.542373" diaginertia="0.00215059 0.00196588 0.000256086" />
-                <joint name="L_ankle_y" pos="0 0 0" axis="0 1 0" range="-0.698 0.698" frictionloss="0.01" />
-                <geom size="0.11 0.04 0.0075" pos="0.03 -0.011 -0.02" type="box" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-                <geom type="box" rgba="" size="0.11 0.04 0.0075" pos="0.03 -0.011 -0.02" />
+      <body name="base">
+        <inertial pos="0.00648939 0.00390843 -0.180571" quat="0.999495 -0.0317223 -0.00110485 0.00149824" mass="18.9034" diaginertia="1.33012 0.801658 0.559678" />
+        <geom type="mesh" mesh="trunk" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="trunk" />
+        <geom pos="0 0.255 0.45" quat="2.67949e-08 -1 0 0" type="mesh" mesh="clav" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="clav" pos="0 0.255 0.45" quat="2.67949e-08 -1 0 0" />
+        <geom pos="0 0.255 0.45" type="mesh" mesh="scap" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="scap" pos="0 0.255 0.45" />
+        <geom pos="0 0.255 0.45" type="mesh" mesh="uarm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="uarm" pos="0 0.255 0.45" />
+        <geom pos="0 0.255 0.22" type="mesh" mesh="farm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="farm" pos="0 0.255 0.22" />
+        <geom pos="0 -0.255 0.45" quat="1 0 0 0" type="mesh" mesh="clav" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="clav" pos="0 -0.255 0.45" quat="1 0 0 0" />
+        <geom pos="0 -0.255 0.45" type="mesh" mesh="scap" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="scap" pos="0 -0.255 0.45" />
+        <geom pos="0 -0.255 0.45" type="mesh" mesh="uarm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="uarm" pos="0 -0.255 0.45" />
+        <geom pos="0 -0.255 0.22" type="mesh" mesh="farm" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+        <geom type="mesh" rgba="" mesh="farm" pos="0 -0.255 0.22" />
+        <body name="L_buttock" pos="0 0.1577 0">
+          <inertial pos="0.00129183 -0.00184328 2.27946e-05" quat="0.706341 0.707841 -0.00498313 -0.00434939" mass="1.29909" diaginertia="0.00209325 0.00150009 0.00131174" />
+          <joint name="L_hip_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14" />
+          <geom quat="2.67949e-08 1 0 0" type="mesh" mesh="buttock" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="" mesh="buttock" quat="2.67949e-08 1 0 0" />
+          <body name="L_leg">
+            <inertial pos="0.000708602 -2.24355e-05 -0.110352" quat="0.706876 0.0329943 0.0330587 0.705794" mass="1.33983" diaginertia="0.00375341 0.00352246 0.00184361" />
+            <joint name="L_hip_x" pos="0 0 0" axis="1 0 0" range="-0.523 2.093" />
+            <geom type="mesh" mesh="leg" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="" mesh="leg" />
+            <body name="L_thigh">
+              <inertial pos="-0.000407357 0.00130538 -0.291653" quat="0.711843 -0.00549725 0.000501512 0.702317" mass="1.93995" diaginertia="0.00607631 0.0044935 0.00293511" />
+              <joint name="L_hip_z" pos="0 0 0" axis="0 0 1" range="-3.14 3.14" />
+              <geom type="mesh" mesh="mthigh" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="" mesh="mthigh" />
+              <body name="L_calf" pos="0 0 -0.3">
+                <inertial pos="-0.00195352 -0.00434338 -0.134048" quat="0.599799 -0.00402307 0.025204 0.799743" mass="1.54477" diaginertia="0.00986297 0.00971929 0.00143814" />
+                <joint name="L_knee" pos="0 0 0" axis="0 1 0" range="-1.919 1.919" />
+                <geom type="mesh" mesh="mcalf" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                <geom type="mesh" rgba="" mesh="mcalf" />
+                <body name="L_foot" pos="0 0 -0.3">
+                  <inertial pos="0.0233665 0.014827 -0.0165314" quat="-0.00182247 0.713608 0.0126839 0.700428" mass="0.542373" diaginertia="0.00215059 0.00196588 0.000256086" />
+                  <joint name="L_ankle_y" pos="0 0 0" axis="0 1 0" range="-0.698 0.698" frictionloss="0.01" />
+                  <geom size="0.11 0.04 0.0075" pos="0.03 -0.011 -0.02" type="box" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                  <geom type="box" rgba="" size="0.11 0.04 0.0075" pos="0.03 -0.011 -0.02" />
+                </body>
               </body>
             </body>
           </body>
         </body>
-      </body>
-      <body name="R_buttock" pos="0 -0.1577 0">
-        <inertial pos="0.00129183 0.00184328 2.27946e-05" quat="0.707841 0.706341 0.00434939 0.00498313" mass="1.29909" diaginertia="0.00209325 0.00150009 0.00131174" />
-        <joint name="R_hip_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14" />
-        <geom type="mesh" mesh="buttock" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-        <geom type="mesh" rgba="" mesh="buttock" />
-        <body name="R_leg">
-          <inertial pos="0.000708602 2.24355e-05 -0.110352" quat="0.705794 0.0330587 0.0329943 0.706876" mass="1.33983" diaginertia="0.00375341 0.00352246 0.00184361" />
-          <joint name="R_hip_x" pos="0 0 0" axis="1 0 0" range="-2.093 0.523" />
-          <geom type="mesh" mesh="leg" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-          <geom type="mesh" rgba="" mesh="leg" />
-          <body name="R_thigh">
-            <inertial pos="-0.000407357 -0.00130538 -0.291653" quat="0.702317 0.000501512 -0.00549725 0.711843" mass="1.93995" diaginertia="0.00607631 0.0044935 0.00293511" />
-            <joint name="R_hip_z" pos="0 0 0" axis="0 0 1" range="-3.14 3.14" />
-            <geom type="mesh" mesh="thigh" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-            <geom type="mesh" rgba="" mesh="thigh" />
-            <body name="R_calf" pos="0 0 -0.3">
-              <inertial pos="-0.00195352 0.00434338 -0.134048" quat="0.799743 0.025204 -0.00402307 0.599799" mass="1.54477" diaginertia="0.00986297 0.00971929 0.00143814" />
-              <joint name="R_knee" pos="0 0 0" axis="0 1 0" range="-1.919 1.919" />
-              <geom type="mesh" mesh="calf" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-              <geom type="mesh" rgba="" mesh="calf" />
-              <body name="R_foot" pos="0 0 -0.3">
-                <inertial pos="0.0233665 0.014827 -0.0165314" quat="-0.00182247 0.713608 0.0126839 0.700428" mass="0.542373" diaginertia="0.00215059 0.00196588 0.000256086" />
-                <joint name="R_ankle_y" pos="0 0 0" axis="0 1 0" range="-0.698 0.698" frictionloss="0.01" />
-                <geom size="0.11 0.04 0.0075" pos="0.03 0.011 -0.02" type="box" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
-                <geom type="box" rgba="" size="0.11 0.04 0.0075" pos="0.03 0.011 -0.02" />
+        <body name="R_buttock" pos="0 -0.1577 0">
+          <inertial pos="0.00129183 0.00184328 2.27946e-05" quat="0.707841 0.706341 0.00434939 0.00498313" mass="1.29909" diaginertia="0.00209325 0.00150009 0.00131174" />
+          <joint name="R_hip_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14" />
+          <geom type="mesh" mesh="buttock" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+          <geom type="mesh" rgba="" mesh="buttock" />
+          <body name="R_leg">
+            <inertial pos="0.000708602 2.24355e-05 -0.110352" quat="0.705794 0.0330587 0.0329943 0.706876" mass="1.33983" diaginertia="0.00375341 0.00352246 0.00184361" />
+            <joint name="R_hip_x" pos="0 0 0" axis="1 0 0" range="-2.093 0.523" />
+            <geom type="mesh" mesh="leg" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+            <geom type="mesh" rgba="" mesh="leg" />
+            <body name="R_thigh">
+              <inertial pos="-0.000407357 -0.00130538 -0.291653" quat="0.702317 0.000501512 -0.00549725 0.711843" mass="1.93995" diaginertia="0.00607631 0.0044935 0.00293511" />
+              <joint name="R_hip_z" pos="0 0 0" axis="0 0 1" range="-3.14 3.14" />
+              <geom type="mesh" mesh="thigh" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+              <geom type="mesh" rgba="" mesh="thigh" />
+              <body name="R_calf" pos="0 0 -0.3">
+                <inertial pos="-0.00195352 0.00434338 -0.134048" quat="0.799743 0.025204 -0.00402307 0.599799" mass="1.54477" diaginertia="0.00986297 0.00971929 0.00143814" />
+                <joint name="R_knee" pos="0 0 0" axis="0 1 0" range="-1.919 1.919" />
+                <geom type="mesh" mesh="calf" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                <geom type="mesh" rgba="" mesh="calf" />
+                <body name="R_foot" pos="0 0 -0.3">
+                  <inertial pos="0.0233665 0.014827 -0.0165314" quat="-0.00182247 0.713608 0.0126839 0.700428" mass="0.542373" diaginertia="0.00215059 0.00196588 0.000256086" />
+                  <joint name="R_ankle_y" pos="0 0 0" axis="0 1 0" range="-0.698 0.698" frictionloss="0.01" />
+                  <geom size="0.11 0.04 0.0075" pos="0.03 0.011 -0.02" type="box" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
+                  <geom type="box" rgba="" size="0.11 0.04 0.0075" pos="0.03 0.011 -0.02" />
+                </body>
               </body>
             </body>
           </body>
@@ -169,6 +174,6 @@
   </sensor>
 
   <keyframe>
-    <key name="default" qpos="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" />
+    <key name="default" qpos="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" />
   </keyframe>
 </mujoco>
