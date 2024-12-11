@@ -476,7 +476,7 @@ def add_statistics(root: ET.Element, temp_mjcf_path: Path) -> None:
         root: The root element of the MJCF file.
         temp_mjcf_path: Path to the temporary MJCF file to compute statistics from.
     """
-    # Compute the statistics from the model
+    # Compute the statistics directly from mujoco
     model = mujoco.MjModel.from_xml_path(str(temp_mjcf_path))
     center_str = " ".join(map(str, model.stat.center))
 
@@ -484,10 +484,11 @@ def add_statistics(root: ET.Element, temp_mjcf_path: Path) -> None:
         "statistic", {"meansize": str(model.stat.meansize), "extent": str(model.stat.extent), "center": center_str}
     )
 
-    # Insert after default
-    default_el = root.find("default")
-    idx = list(root).index(default_el)
-    root.insert(idx + 1, statistic)
+    # Insert after default if it exists, otherwise append
+    if isinstance(existing_element := root.find("default"), ET.Element):
+        root.insert(list(root).index(existing_element) + 1, statistic)
+    else:
+        root.append(statistic)
 
 
 def calculate_dof_from_xml(root: ET.Element) -> int:
