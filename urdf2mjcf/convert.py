@@ -205,12 +205,32 @@ def add_root_body(root: ET.Element) -> None:
         },
     )
 
-    # Move existing bodies and geoms under root_body
+    # Create base body
+    base_body = ET.SubElement(
+        root_body,
+        "body",
+        attrib={"name": "base"},
+    )
+
+    # Add inertial properties to base body
+    ET.SubElement(
+        base_body,
+        "inertial",
+        attrib={
+            # TODO: How to compute these values?
+            "pos": "0.00648939 0.00390843 -0.180571",
+            "quat": "0.999495 -0.0317223 -0.00110485 0.00149824",
+            "mass": "18.9034",
+            "diaginertia": "1.33012 0.801658 0.559678",
+        },
+    )
+
+    # Move existing bodies and geoms under base_body
     elements_to_move = list(worldbody)
     for elem in elements_to_move:
         if elem.tag in {"body", "geom"}:
             worldbody.remove(elem)
-            root_body.append(elem)
+            base_body.append(elem)
     worldbody.append(root_body)
 
 
@@ -449,21 +469,64 @@ def add_visual_geom_logic(root: ET.Element) -> None:
             body.insert(index + 1, new_geom)
 
 
-def add_default_position(root: ET.Element, default_position: List[float]) -> None:
-    """Add a keyframe to the root element.
+def add_statistics(root: ET.Element, temp_mjcf_path: Path) -> None:
+    """Add statistics element to the MJCF file using computed values.
 
     Args:
         root: The root element of the MJCF file.
-        default_position: The default position of the robot.
+        temp_mjcf_path: Path to the temporary MJCF file to compute statistics from.
     """
-    actuators = root.find("actuator")
-    if actuators is None:
-        raise ValueError("No actuators found in the MJCF file.")
+    # Compute the statistics from the model
+    model = mujoco.MjModel.from_xml_path(str(temp_mjcf_path))
+    center_str = " ".join(map(str, model.stat.center))
 
-    num_actuators = len(list(actuators.iter("motor")))
-    if len(default_position) != num_actuators:
-        raise ValueError(f"Default position must have {num_actuators} values, got {len(default_position)}.")
+    statistic = ET.Element(
+        "statistic", {"meansize": str(model.stat.meansize), "extent": str(model.stat.extent), "center": center_str}
+    )
 
+    # Insert after default
+    default_el = root.find("default")
+    idx = list(root).index(default_el)
+    root.insert(idx + 1, statistic)
+
+
+def calculate_dof_from_xml(root: ET.Element) -> int:
+    """Calculate the total DOF (qpos size) of a robot based on the XML tree.
+
+    Free joints add 7 DOFs, and joints with a 'range' attribute add 1 DOF each.
+
+    Args:
+        root: Root element of the MJCF XML.
+
+    Returns:
+        Total DOF (qpos size).
+    """
+    dof = 0
+
+    # Count free joints
+    for _ in root.iter("freejoint"):
+        dof += 7
+
+    # Count joints with a 'range' attribute
+    for joint in root.iter("joint"):
+        if "range" in joint.attrib:
+            dof += 1
+
+    return dof
+
+
+def add_default_position(root: ET.Element, default_position: List[float]) -> None:
+    """Add a keyframe to the root element with the default start position.
+
+    Args:
+        root: The root element of the MJCF file.
+        default_position: The default positions of the robot.
+    """
+    num_dof = calculate_dof_from_xml(root)
+    if len(default_position) != num_dof:
+        raise ValueError(f"Default position must have {num_dof} values, got {len(default_position)}.")
+
+    # Add the keyframe with the default position
     keyframe = ET.Element("keyframe")
     key = ET.SubElement(keyframe, "key")
     key.set("name", "default")
@@ -559,6 +622,7 @@ def convert_urdf_to_mjcf(
         add_default(root)
         add_compiler(root)
         add_option(root)
+        add_statistics(root, temp_mjcf_path)
         add_assets(root)
         add_cameras(root, distance=camera_distance, height_offset=camera_height_offset)
         add_root_body(root)
