@@ -209,19 +209,10 @@ def add_root_body(root: ET.Element) -> None:
     base_body = ET.SubElement(
         root_body,
         "body",
-        attrib={"name": "base"},
-    )
-
-    # Add inertial properties to base body
-    ET.SubElement(
-        base_body,
-        "inertial",
         attrib={
-            # TODO: How to compute these values?
-            "pos": "0.00648939 0.00390843 -0.180571",
-            "quat": "0.999495 -0.0317223 -0.00110485 0.00149824",
-            "mass": "18.9034",
-            "diaginertia": "1.33012 0.801658 0.559678",
+            "name": "base",
+            "pos": "0 0 0",
+            "quat": "1 0 0 0",
         },
     )
 
@@ -469,28 +460,6 @@ def add_visual_geom_logic(root: ET.Element) -> None:
             body.insert(index + 1, new_geom)
 
 
-def add_statistics(root: ET.Element, temp_mjcf_path: Path) -> None:
-    """Add statistics element to the MJCF file using computed values.
-
-    Args:
-        root: The root element of the MJCF file.
-        temp_mjcf_path: Path to the temporary MJCF file to compute statistics from.
-    """
-    # Compute the statistics directly from mujoco
-    model = mujoco.MjModel.from_xml_path(str(temp_mjcf_path))
-    center_str = " ".join(map(str, model.stat.center))
-
-    statistic = ET.Element(
-        "statistic", {"meansize": str(model.stat.meansize), "extent": str(model.stat.extent), "center": center_str}
-    )
-
-    # Insert after default if it exists, otherwise append
-    if isinstance(existing_element := root.find("default"), ET.Element):
-        root.insert(list(root).index(existing_element) + 1, statistic)
-    else:
-        root.append(statistic)
-
-
 def calculate_dof_from_xml(root: ET.Element) -> int:
     """Calculate the total DOF (qpos size) of a robot based on the XML tree.
 
@@ -623,7 +592,6 @@ def convert_urdf_to_mjcf(
         add_default(root)
         add_compiler(root)
         add_option(root)
-        add_statistics(root, temp_mjcf_path)
         add_assets(root)
         add_cameras(root, distance=camera_distance, height_offset=camera_height_offset)
         add_root_body(root)
