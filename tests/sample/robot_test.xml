@@ -13,8 +13,6 @@
     </default>
   </default>
 
-  <statistic meansize="0.17915529375241127" extent="1.3826505166446221" center="0.0005249932643319744 2.7589769057312363e-05 -0.045961782735088" />
-
   <asset>
     <mesh name="trunk" file="trunk.stl" scale="0.001 0.001 0.001" />
     <mesh name="buttock" file="buttock.stl" scale="0.001 0.001 0.001" />
@@ -41,8 +39,7 @@
     <body name="root" pos="0 0 0.63" quat="1 0 0 0">
       <freejoint name="root" />
       <site name="imu" size="0.01" pos="0 0 0" />
-      <body name="base">
-        <inertial pos="0.00648939 0.00390843 -0.180571" quat="0.999495 -0.0317223 -0.00110485 0.00149824" mass="18.9034" diaginertia="1.33012 0.801658 0.559678" />
+      <body name="base" pos="0 0 0" quat="1 0 0 0">
         <geom type="mesh" mesh="trunk" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
         <geom type="mesh" rgba="" mesh="trunk" />
         <geom pos="0 0.255 0.45" quat="2.67949e-08 -1 0 0" type="mesh" mesh="clav" contype="1" conaffinity="0" density="0" group="1" class="visualgeom" />
