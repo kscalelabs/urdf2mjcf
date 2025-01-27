@@ -4,7 +4,7 @@ import io
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Iterator, Tuple, Union
+from typing import Iterator, Optional, Tuple, Union
 from xml.dom import minidom
 
 
@@ -16,7 +16,7 @@ def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
 ]:
     urdf_tree = ET.parse(urdf_path)
 
-    def get_mesh(visual_or_collision: ET.Element | None) -> tuple[ET.Element, Path] | tuple[None, None]:
+    def get_mesh(visual_or_collision: Optional[ET.Element]) -> Union[Tuple[ET.Element, Path], Tuple[None, None]]:
         if visual_or_collision is None:
             return (None, None)
         if (geometry := visual_or_collision.find("geometry")) is None:
