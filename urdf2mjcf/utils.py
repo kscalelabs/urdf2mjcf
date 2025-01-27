@@ -4,19 +4,19 @@ import io
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Iterator, Optional, Tuple, Union
+from typing import Iterator, Tuple, Union
 from xml.dom import minidom
 
 
-def iter_meshes(
-    urdf_path: Path,
-    no_collision_mesh: bool = False,
-) -> Iterator[
-    Tuple[Union[Tuple[ET.Element, Path], Tuple[None, None]], Union[Tuple[ET.Element, Path], Tuple[None, None]]]
+def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
+    tuple[
+        Union[Tuple[ET.Element, Path], Tuple[None, None]],
+        Union[Tuple[ET.Element, Path], Tuple[None, None]],
+    ]
 ]:
     urdf_tree = ET.parse(urdf_path)
 
-    def get_mesh(visual_or_collision: Optional[ET.Element]) -> Union[Tuple[ET.Element, Path], Tuple[None, None]]:
+    def get_mesh(visual_or_collision: ET.Element | None) -> tuple[ET.Element, Path] | tuple[None, None]:
         if visual_or_collision is None:
             return (None, None)
         if (geometry := visual_or_collision.find("geometry")) is None:
@@ -29,26 +29,13 @@ def iter_meshes(
         visual_link = link.find("visual")
         collision_link = link.find("collision")
 
-        if no_collision_mesh:
-            if collision_link is not None:
-                raise ValueError("Collision links should not exist.")
-            visual_mesh = get_mesh(visual_link)
-            yield visual_mesh, (None, None)
+        visual_mesh = get_mesh(visual_link)
+        collision_mesh = get_mesh(collision_link)
 
-        else:
-            if visual_link is None or collision_link is None:
-                if visual_link is not None or collision_link is not None:
-                    raise ValueError("Visual and collision links must be present together.")
-                continue
-            visual_mesh = get_mesh(visual_link)
-            collision_mesh = get_mesh(collision_link)
+        yield visual_mesh, collision_mesh
 
-            if visual_mesh is None or collision_mesh is None:
-                if visual_mesh is not None or collision_mesh is not None:
-                    raise ValueError("Visual and collision meshes must be present together.")
-                continue
-
-            yield visual_mesh, collision_mesh
+    if save_when_done:
+        urdf_tree.write(urdf_path, encoding="utf-8", xml_declaration=True)
 
 
 def save_xml(path: Union[str, Path, io.StringIO], tree: Union[ET.ElementTree, ET.Element]) -> None:
