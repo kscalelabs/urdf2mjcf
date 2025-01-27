@@ -9,7 +9,7 @@ from xml.dom import minidom
 
 
 def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
-    tuple[
+    Tuple[
         Union[Tuple[ET.Element, Path], Tuple[None, None]],
         Union[Tuple[ET.Element, Path], Tuple[None, None]],
     ]
