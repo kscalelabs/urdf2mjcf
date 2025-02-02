@@ -27,6 +27,8 @@ class JointParam(BaseModel):
 
 class JointParamsMetadata(BaseModel):
     pd_params: dict[str, JointParam] = {}
+    default_kp: float = 0.0
+    default_kd: float = 0.0
 
     class Config:
         extra = "forbid"
@@ -560,8 +562,8 @@ def convert_urdf_to_mjcf(
                         damping_val: float = param.kd
                         break
                 else:
-                    stiffness_val = 0.0
-                    damping_val = 0.0
+                    stiffness_val = joint_params_metadata.default_kp
+                    damping_val = joint_params_metadata.default_kd
 
                 actuator_joints.append(
                     ParsedJointParams(
