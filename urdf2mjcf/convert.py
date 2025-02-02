@@ -27,7 +27,7 @@ class JointParam(BaseModel):
 
 class JointParamsMetadata(BaseModel):
     suffix_to_pd_params: dict[str, JointParam] = {}
-    default: JointParam = JointParam()
+    default: JointParam | None = None
 
     class Config:
         extra = "forbid"
@@ -612,8 +612,12 @@ def convert_urdf_to_mjcf(
                         damping_val = param.kd
                         break
                 else:
-                    stiffness_val = joint_params_metadata.default.kp
-                    damping_val = joint_params_metadata.default.kd
+                    if (default_values := joint_params_metadata.default) is not None:
+                        stiffness_val = default_values.kp
+                        damping_val = default_values.kd
+                    else:
+                        stiffness_val = None
+                        damping_val = None
 
                 actuator_joints.append(
                     ParsedJointParams(
