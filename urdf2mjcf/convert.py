@@ -2,15 +2,19 @@
 
 import argparse
 import json
+import logging
 import math
 import shutil
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
+import colorlogging
 from pydantic import BaseModel
 
 from urdf2mjcf.utils import save_xml
+
+logger = logging.getLogger(__name__)
 
 
 class JointParam(BaseModel):
@@ -190,16 +194,21 @@ def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> floa
 
 
 def add_compiler(root: ET.Element) -> None:
-    """Add a compiler element to the MJCF root."""
-    element = ET.Element(
-        "compiler",
-        attrib={
-            "angle": "radian",
-            "meshdir": "meshes",
-            "eulerseq": "zyx",
-            "autolimits": "true",
-        },
-    )
+    """Add a compiler element to the MJCF root.
+
+    Args:
+        root: The MJCF root element.
+        timestep: Optional control timestep in seconds. If specified, sets the simulation
+                 timestep for the PD controller.
+    """
+    attrib = {
+        "angle": "radian",
+        "meshdir": "meshes",
+        "eulerseq": "zyx",
+        "autolimits": "true",
+    }
+
+    element = ET.Element("compiler", attrib=attrib)
     existing_element = root.find("compiler")
     if isinstance(existing_element, ET.Element):
         root.remove(existing_element)
@@ -381,9 +390,10 @@ def convert_urdf_to_mjcf(
 
     Args:
         urdf_path: The path to the URDF file.
-        mjcf_path: The desired output MJCF file path. If None, the URDF path with an
-                   ".xml" extension is used.
-        copy_meshes: If True, mesh files will be copied to the MJCF meshes directory.
+        mjcf_path: The desired output MJCF file path. If None, the URDF path
+            with an ".xml" extension is used.
+        copy_meshes: If True, mesh files will be copied to the MJCF meshes
+            directory.
         joint_params_metadata: Optional PD gains metadata for joints.
     """
     urdf_path = Path(urdf_path)
@@ -527,8 +537,9 @@ def convert_urdf_to_mjcf(
                 iyz = float(inertia_elem.attrib.get("iyz", "0"))
                 izz = float(inertia_elem.attrib.get("izz", "0"))
                 if abs(ixy) > 1e-6 or abs(ixz) > 1e-6 or abs(iyz) > 1e-6:
-                    print(
-                        f"Warning: off-diagonal inertia terms for link '{link_name}' are nonzero and will be ignored."
+                    logger.warning(
+                        "Warning: off-diagonal inertia terms for link '%s' are nonzero and will be ignored.",
+                        link_name,
                     )
                 inertial_elem.attrib["diaginertia"] = f"{ixx} {iyy} {izz}"
             body.append(inertial_elem)
@@ -648,7 +659,7 @@ def convert_urdf_to_mjcf(
     ]
     min_z: float = compute_min_z(robot_body, identity)
     computed_offset: float = -min_z
-    print(f"Auto-detected base offset: {computed_offset} (min z = {min_z})")
+    logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
 
     # Create a root body with a freejoint and an IMU site; the z position uses the computed offset.
     root_body = ET.Element("body", attrib={"name": "root", "pos": f"0 0 {computed_offset}", "quat": "1 0 0 0"})
@@ -701,12 +712,36 @@ def convert_urdf_to_mjcf(
 def main() -> None:
     """Parse command-line arguments and execute the URDF to MJCF conversion."""
     parser = argparse.ArgumentParser(description="Convert a URDF file to an MJCF file.")
-    parser.add_argument("urdf_path", type=str, help="The path to the URDF file.")
-    parser.add_argument("--output", type=str, help="The path to the output MJCF file.")
-    parser.add_argument("--copy-meshes", action="store_true", help="Copy mesh files to the output MJCF directory.")
-    parser.add_argument("--metadata", type=str, help="A JSON string containing joint PD parameters.")
-    parser.add_argument("--metadata-file", type=str, help="A JSON file containing joint PD parameters.")
+
+    parser.add_argument(
+        "urdf_path",
+        type=str,
+        help="The path to the URDF file.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="The path to the output MJCF file.",
+    )
+    parser.add_argument(
+        "--copy-meshes",
+        action="store_true",
+        help="Copy mesh files to the output MJCF directory.",
+    )
+    parser.add_argument(
+        "--metadata",
+        type=str,
+        help="A JSON string containing joint PD parameters.",
+    )
+    parser.add_argument(
+        "--metadata-file",
+        type=str,
+        help="A JSON file containing joint PD parameters.",
+    )
+
     args = parser.parse_args()
+
+    colorlogging.configure()
 
     # Parse the raw metadata from the command line arguments.
     raw_metadata: dict | None = None
