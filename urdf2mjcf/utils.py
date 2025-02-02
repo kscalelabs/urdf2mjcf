@@ -4,19 +4,19 @@ import io
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Iterator, Optional, Tuple, Union
+from typing import Iterator
 from xml.dom import minidom
 
 
 def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
-    Tuple[
-        Union[Tuple[ET.Element, Path], Tuple[None, None]],
-        Union[Tuple[ET.Element, Path], Tuple[None, None]],
+    tuple[
+        tuple[ET.Element, Path] | tuple[None, None],
+        tuple[ET.Element, Path] | tuple[None, None],
     ]
 ]:
     urdf_tree = ET.parse(urdf_path)
 
-    def get_mesh(visual_or_collision: Optional[ET.Element]) -> Union[Tuple[ET.Element, Path], Tuple[None, None]]:
+    def get_mesh(visual_or_collision: ET.Element | None) -> tuple[ET.Element | None, Path | None]:
         if visual_or_collision is None:
             return (None, None)
         if (geometry := visual_or_collision.find("geometry")) is None:
@@ -38,7 +38,7 @@ def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
         urdf_tree.write(urdf_path, encoding="utf-8", xml_declaration=True)
 
 
-def save_xml(path: Union[str, Path, io.StringIO], tree: Union[ET.ElementTree, ET.Element]) -> None:
+def save_xml(path: str | Path | io.StringIO, tree: ET.ElementTree | ET.Element) -> None:
     if isinstance(tree, ET.ElementTree):
         tree = tree.getroot()
     xmlstr = minidom.parseString(ET.tostring(tree)).toprettyxml(indent="  ")
