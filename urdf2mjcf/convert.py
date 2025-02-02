@@ -608,11 +608,8 @@ def convert_urdf_to_mjcf(
                 # Use PD gains from the joint parameters metadata.
                 for suffix, param in joint_params_metadata.suffix_to_pd_params.items():
                     if j_name.endswith(suffix):
-                        stiffness_val: float = param.kp
-                        damping_val: float = param.kd
-                        # Use metadata max_torque if effort not specified in URDF
-                        if max_torque is None:
-                            max_torque = param.max_torque
+                        stiffness_val = param.kp
+                        damping_val = param.kd
                         break
                 else:
                     stiffness_val = joint_params_metadata.default.kp
