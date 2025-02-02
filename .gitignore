@@ -19,3 +19,7 @@ build/
 dist/
 *.so
 out*/
+
+# Temporary files
+robot/
+MUJOCO_LOG.TXT
