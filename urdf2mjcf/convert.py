@@ -262,8 +262,13 @@ def add_default(root: ET.Element) -> None:
     root.insert(0, default)
 
 
-def add_assets(root: ET.Element) -> None:
-    """Add texture and material assets to the MJCF root."""
+def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
+    """Add texture and material assets to the MJCF root.
+
+    Args:
+        root: The MJCF root element.
+        materials: Dictionary mapping material names to RGBA color strings.
+    """
     asset = root.find("asset")
     if asset is None:
         asset = ET.SubElement(root, "asset")
@@ -291,12 +296,25 @@ def add_assets(root: ET.Element) -> None:
             "texuniform": "true",
         },
     )
+
+    # Add materials from URDF
+    for name, rgba in materials.items():
+        ET.SubElement(
+            asset,
+            "material",
+            attrib={
+                "name": name,
+                "rgba": rgba,
+            },
+        )
+
+    # Add default material for visual elements without materials
     ET.SubElement(
         asset,
         "material",
         attrib={
-            "name": "visualgeom",
-            "rgba": "0.5 0.9 0.2 1",
+            "name": "default_material",
+            "rgba": "0.7 0.7 0.7 1",
         },
     )
 
@@ -403,12 +421,41 @@ def convert_urdf_to_mjcf(
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
     robot: ET.Element = urdf_tree.getroot()
 
+    # Parse materials from URDF - both from root level and from link visuals
+    materials: dict[str, str] = {}
+
+    # Get materials defined at the robot root level
+    for material in robot.findall("material"):
+        name = material.attrib.get("name")
+        if name is None:
+            continue
+        color = material.find("color")
+        if color is not None:
+            rgba = color.attrib.get("rgba")
+            if rgba is not None:
+                materials[name] = rgba
+
+    # Get materials defined in link visual elements
+    for link in robot.findall("link"):
+        for visual in link.findall("visual"):
+            material = visual.find("material")
+            if material is None:
+                continue
+            name = material.attrib.get("name")
+            if name is None:
+                continue
+            color = material.find("color")
+            if color is not None:
+                rgba = color.attrib.get("rgba")
+                if rgba is not None:
+                    materials[name] = rgba
+
     # Create a new MJCF tree root element.
     mjcf_root: ET.Element = ET.Element("mujoco", attrib={"model": robot.attrib.get("name", "converted_robot")})
 
     # Add compiler, assets, and default settings.
     add_compiler(mjcf_root)
-    add_assets(mjcf_root)
+    add_assets(mjcf_root, materials)
     add_default(mjcf_root)
 
     # Create or find the worldbody element.
@@ -645,10 +692,19 @@ def convert_urdf_to_mjcf(
                 "name": f"{link_name}_visual_{idx}",
                 "pos": pos_geom,
                 "quat": quat_geom,
-                "material": "visualgeom",
-                "contype": "0",
-                "conaffinity": "0",
             }
+
+            # Get material from visual element
+            material_elem = visual.find("material")
+            if material_elem is not None:
+                material_name = material_elem.attrib.get("name")
+                if material_name in materials:
+                    geom_attrib["material"] = material_name
+                else:
+                    geom_attrib["material"] = "default_material"
+            else:
+                geom_attrib["material"] = "default_material"
+
             geom_elem = visual.find("geometry")
             if geom_elem is not None:
                 geom = handle_geom_element(geom_elem, "1 1 1")
