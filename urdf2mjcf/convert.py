@@ -18,13 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class JointParam(BaseModel):
-    """Parameters for joint PD control.
-
-    Attributes:
-        kp: Proportional gain.
-        kd: Derivative gain.
-    """
-
     kp: float = 0.0
     kd: float = 0.0
 
@@ -33,12 +26,6 @@ class JointParam(BaseModel):
 
 
 class JointParamsMetadata(BaseModel):
-    """Metadata containing PD parameters for joints.
-
-    Attributes:
-        pd_params: Dictionary mapping joint name suffixes to PD parameters.
-    """
-
     pd_params: dict[str, JointParam] = {}
 
     class Config:
@@ -64,6 +51,14 @@ class ParsedJointParams:
     damping: float
     lower: float | None = None
     upper: float | None = None
+
+
+@dataclass
+class GeomElement:
+    type: str
+    size: str | None = None
+    scale: str | None = None
+    mesh: str | None = None
 
 
 def parse_vector(s: str) -> list[float]:
@@ -377,9 +372,6 @@ def rpy_to_quat(rpy_str: str) -> str:
     return f"{qw} {qx} {qy} {qz}"
 
 
-# -----------------------------
-# Main conversion function
-# -----------------------------
 def convert_urdf_to_mjcf(
     urdf_path: str | Path,
     mjcf_path: str | Path | None = None,
@@ -427,8 +419,16 @@ def convert_urdf_to_mjcf(
     parent_map: dict[str, list[tuple[str, ET.Element]]] = {}
     child_joints: dict[str, ET.Element] = {}
     for joint in robot.findall("joint"):
-        parent_name = joint.find("parent").attrib["link"]
-        child_name = joint.find("child").attrib["link"]
+        parent_elem = joint.find("parent")
+        child_elem = joint.find("child")
+        if parent_elem is None or child_elem is None:
+            logger.warning("Joint missing parent or child element")
+            continue
+        parent_name = parent_elem.attrib.get("link", "")
+        child_name = child_elem.attrib.get("link", "")
+        if not parent_name or not child_name:
+            logger.warning("Joint missing parent or child link name")
+            continue
         parent_map.setdefault(parent_name, []).append((child_name, joint))
         child_joints[child_name] = joint
 
@@ -442,6 +442,64 @@ def convert_urdf_to_mjcf(
     # These dictionaries are used to collect mesh assets and actuator joints.
     mesh_assets: dict[str, str] = {}
     actuator_joints: list[ParsedJointParams] = []
+
+    def handle_geom_element(geom_elem: ET.Element | None, default_size: str) -> GeomElement:
+        """Helper to handle geometry elements safely.
+
+        Args:
+            geom_elem: The geometry element to process
+            default_size: Default size to use if not specified
+
+        Returns:
+            A GeomElement instance
+        """
+        if geom_elem is None:
+            return GeomElement(type="box", size=default_size, scale=None, mesh=None)
+
+        box_elem = geom_elem.find("box")
+        if box_elem is not None:
+            size_str = box_elem.attrib.get("size", default_size)
+            return GeomElement(
+                type="box",
+                size=" ".join(str(float(s) / 2) for s in size_str.split()),
+            )
+
+        cyl_elem = geom_elem.find("cylinder")
+        if cyl_elem is not None:
+            radius = cyl_elem.attrib.get("radius", "0.1")
+            length = cyl_elem.attrib.get("length", "1")
+            return GeomElement(
+                type="cylinder",
+                size=f"{radius} {float(length) / 2}",
+            )
+
+        sph_elem = geom_elem.find("sphere")
+        if sph_elem is not None:
+            radius = sph_elem.attrib.get("radius", "0.1")
+            return GeomElement(
+                type="sphere",
+                size=radius,
+            )
+
+        mesh_elem = geom_elem.find("mesh")
+        if mesh_elem is not None:
+            filename = mesh_elem.attrib.get("filename")
+            if filename is not None:
+                mesh_name = Path(filename).name
+                if mesh_name not in mesh_assets:
+                    mesh_assets[mesh_name] = filename
+                scale = mesh_elem.attrib.get("scale")
+                return GeomElement(
+                    type="mesh",
+                    size=None,
+                    scale=scale,
+                    mesh=mesh_name,
+                )
+
+        return GeomElement(
+            type="box",
+            size=default_size,
+        )
 
     def build_body(
         link_name: str,
@@ -558,34 +616,15 @@ def convert_urdf_to_mjcf(
             geom_attrib: dict[str, str] = {"name": f"{link_name}_collision_{idx}", "pos": pos_geom, "quat": quat_geom}
             geom_elem: ET.Element | None = collision.find("geometry")
             if geom_elem is not None:
-                if geom_elem.find("box") is not None:
-                    box_elem = geom_elem.find("box")
-                    size_str = box_elem.attrib.get("size", "1 1 1")
-                    half_sizes = " ".join(str(float(s) / 2) for s in size_str.split())
-                    geom_attrib["type"] = "box"
-                    geom_attrib["size"] = half_sizes
-                elif geom_elem.find("cylinder") is not None:
-                    cyl_elem = geom_elem.find("cylinder")
-                    radius = cyl_elem.attrib.get("radius", "0.1")
-                    length = cyl_elem.attrib.get("length", "1")
-                    geom_attrib["type"] = "cylinder"
-                    geom_attrib["size"] = f"{radius} {float(length) / 2}"
-                elif geom_elem.find("sphere") is not None:
-                    sph_elem = geom_elem.find("sphere")
-                    radius = sph_elem.attrib.get("radius", "0.1")
-                    geom_attrib["type"] = "sphere"
-                    geom_attrib["size"] = radius
-                elif geom_elem.find("mesh") is not None:
-                    mesh_elem = geom_elem.find("mesh")
-                    filename = mesh_elem.attrib.get("filename")
-                    if filename is not None:
-                        mesh_name = Path(filename).name
-                        if mesh_name not in mesh_assets:
-                            mesh_assets[mesh_name] = filename
-                        geom_attrib["type"] = "mesh"
-                        geom_attrib["mesh"] = mesh_name
-                        if "scale" in mesh_elem.attrib:
-                            geom_attrib["scale"] = mesh_elem.attrib["scale"]
+                geom = handle_geom_element(geom_elem, "1 1 1")
+                geom_attrib["type"] = geom.type
+                if geom.type == "mesh":
+                    if geom.mesh is not None:
+                        geom_attrib["mesh"] = geom.mesh
+                elif geom.size is not None:
+                    geom_attrib["size"] = geom.size
+                if geom.scale is not None:
+                    geom_attrib["scale"] = geom.scale
             geom_attrib["rgba"] = "0 0 0 0"
             ET.SubElement(body, "geom", attrib=geom_attrib)
 
@@ -610,34 +649,15 @@ def convert_urdf_to_mjcf(
             }
             geom_elem = visual.find("geometry")
             if geom_elem is not None:
-                if geom_elem.find("box") is not None:
-                    box_elem = geom_elem.find("box")
-                    size_str = box_elem.attrib.get("size", "1 1 1")
-                    half_sizes = " ".join(str(float(s) / 2) for s in size_str.split())
-                    geom_attrib["type"] = "box"
-                    geom_attrib["size"] = half_sizes
-                elif geom_elem.find("cylinder") is not None:
-                    cyl_elem = geom_elem.find("cylinder")
-                    radius = cyl_elem.attrib.get("radius", "0.1")
-                    length = cyl_elem.attrib.get("length", "1")
-                    geom_attrib["type"] = "cylinder"
-                    geom_attrib["size"] = f"{radius} {float(length) / 2}"
-                elif geom_elem.find("sphere") is not None:
-                    sph_elem = geom_elem.find("sphere")
-                    radius = sph_elem.attrib.get("radius", "0.1")
-                    geom_attrib["type"] = "sphere"
-                    geom_attrib["size"] = radius
-                elif geom_elem.find("mesh") is not None:
-                    mesh_elem = geom_elem.find("mesh")
-                    filename = mesh_elem.attrib.get("filename")
-                    if filename is not None:
-                        mesh_name = Path(filename).name
-                        if mesh_name not in mesh_assets:
-                            mesh_assets[mesh_name] = filename
-                        geom_attrib["type"] = "mesh"
-                        geom_attrib["mesh"] = mesh_name
-                        if "scale" in mesh_elem.attrib:
-                            geom_attrib["scale"] = mesh_elem.attrib["scale"]
+                geom = handle_geom_element(geom_elem, "1 1 1")
+                geom_attrib["type"] = geom.type
+                if geom.type == "mesh":
+                    if geom.mesh is not None:
+                        geom_attrib["mesh"] = geom.mesh
+                elif geom.size is not None:
+                    geom_attrib["size"] = geom.size
+                if geom.scale is not None:
+                    geom_attrib["scale"] = geom.scale
             ET.SubElement(body, "geom", attrib=geom_attrib)
 
         # Recurse into child links.
@@ -670,16 +690,20 @@ def convert_urdf_to_mjcf(
 
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
-    for joint in actuator_joints:
-        ctrlrange = f"{joint.lower} {joint.upper}" if (joint.lower is not None and joint.upper is not None) else "-1 1"
+    for joint_params in actuator_joints:
+        ctrlrange = (
+            f"{joint_params.lower} {joint_params.upper}"
+            if (joint_params.lower is not None and joint_params.upper is not None)
+            else "-1 1"
+        )
         ET.SubElement(
             actuator_elem,
             "position",
             attrib={
-                "name": f"{joint.name}_ctrl",
-                "joint": joint.name,
-                "kp": f"{joint.stiffness:.8f}",
-                "kv": f"{joint.damping:.8f}",
+                "name": f"{joint_params.name}_ctrl",
+                "joint": joint_params.name,
+                "kp": f"{joint_params.stiffness:.8f}",
+                "kv": f"{joint_params.damping:.8f}",
                 "ctrlrange": ctrlrange,
             },
         )

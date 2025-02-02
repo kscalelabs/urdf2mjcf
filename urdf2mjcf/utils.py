@@ -8,34 +8,48 @@ from typing import Iterator
 from xml.dom import minidom
 
 
-def iter_meshes(urdf_path: Path, save_when_done: bool = False) -> Iterator[
+def iter_meshes(
+    urdf_path: Path,
+) -> Iterator[
     tuple[
         tuple[ET.Element, Path] | tuple[None, None],
         tuple[ET.Element, Path] | tuple[None, None],
-    ]
+    ],
 ]:
-    urdf_tree = ET.parse(urdf_path)
+    """Iterate over mesh elements in a URDF file.
 
-    def get_mesh(visual_or_collision: ET.Element | None) -> tuple[ET.Element | None, Path | None]:
-        if visual_or_collision is None:
-            return (None, None)
-        if (geometry := visual_or_collision.find("geometry")) is None:
-            return (None, None)
-        if (mesh := geometry.find("mesh")) is None:
-            return (None, None)
-        return mesh, (urdf_path.parent / mesh.attrib["filename"]).resolve()
+    Args:
+        urdf_path: Path to the URDF file.
 
-    for link in urdf_tree.iter("link"):
-        visual_link = link.find("visual")
-        collision_link = link.find("collision")
+    Yields:
+        A tuple of ((visual_element, mesh_path), (collision_element, mesh_path))
+        where either tuple may be (None, None) if no mesh is present.
+    """
+    tree = ET.parse(urdf_path)
+    urdf_dir = urdf_path.parent
 
-        visual_mesh = get_mesh(visual_link)
-        collision_mesh = get_mesh(collision_link)
+    for link in tree.findall("link"):
+        visual_mesh: tuple[ET.Element, Path] | tuple[None, None] = (None, None)
+        collision_mesh: tuple[ET.Element, Path] | tuple[None, None] = (None, None)
 
-        yield visual_mesh, collision_mesh
+        for visual in link.findall("visual"):
+            geometry = visual.find("geometry")
+            if geometry is not None:
+                mesh = geometry.find("mesh")
+                if mesh is not None and "filename" in mesh.attrib:
+                    mesh_path = urdf_dir / mesh.attrib["filename"]
+                    visual_mesh = (mesh, mesh_path)
 
-    if save_when_done:
-        urdf_tree.write(urdf_path, encoding="utf-8", xml_declaration=True)
+        for collision in link.findall("collision"):
+            geometry = collision.find("geometry")
+            if geometry is not None:
+                mesh = geometry.find("mesh")
+                if mesh is not None and "filename" in mesh.attrib:
+                    mesh_path = urdf_dir / mesh.attrib["filename"]
+                    collision_mesh = (mesh, mesh_path)
+
+        if visual_mesh != (None, None) or collision_mesh != (None, None):
+            yield visual_mesh, collision_mesh
 
 
 def save_xml(path: str | Path | io.StringIO, tree: ET.ElementTree | ET.Element) -> None:
