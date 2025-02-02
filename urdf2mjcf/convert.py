@@ -438,13 +438,13 @@ def convert_urdf_to_mjcf(
     # Get materials defined in link visual elements
     for link in robot.findall("link"):
         for visual in link.findall("visual"):
-            material = visual.find("material")
-            if material is None:
+            visual_material = visual.find("material")
+            if visual_material is None:
                 continue
-            name = material.attrib.get("name")
+            name = visual_material.attrib.get("name")
             if name is None:
                 continue
-            color = material.find("color")
+            color = visual_material.find("color")
             if color is not None:
                 rgba = color.attrib.get("rgba")
                 if rgba is not None:
