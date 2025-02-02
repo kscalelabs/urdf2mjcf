@@ -18,17 +18,16 @@ logger = logging.getLogger(__name__)
 
 
 class JointParam(BaseModel):
-    kp: float = 0.0
-    kd: float = 0.0
+    kp: float | None = None
+    kd: float | None = None
 
     class Config:
         extra = "forbid"
 
 
 class JointParamsMetadata(BaseModel):
-    pd_params: dict[str, JointParam] = {}
-    default_kp: float = 0.0
-    default_kd: float = 0.0
+    suffix_to_pd_params: dict[str, JointParam] = {}
+    default: JointParam = JointParam()
 
     class Config:
         extra = "forbid"
@@ -45,12 +44,14 @@ class ParsedJointParams:
         damping: Joint damping (kd).
         lower: Lower joint limit, if any.
         upper: Upper joint limit, if any.
+        max_torque: Maximum joint torque, if any.
     """
 
     name: str
     type: str
-    stiffness: float
-    damping: float
+    stiffness: float | None = None
+    damping: float | None = None
+    max_torque: float | None = None
     lower: float | None = None
     upper: float | None = None
 
@@ -589,28 +590,33 @@ def convert_urdf_to_mjcf(
                 if limit is not None:
                     lower_val = limit.attrib.get("lower")
                     upper_val = limit.attrib.get("upper")
+                    effort_val = limit.attrib.get("effort")
                     if lower_val is not None and upper_val is not None:
                         j_attrib["range"] = f"{lower_val} {upper_val}"
                         lower_num: float | None = float(lower_val)
                         upper_num: float | None = float(upper_val)
                     else:
                         lower_num = upper_num = None
+                    max_torque: float | None = float(effort_val) if effort_val is not None else None
                 else:
-                    lower_num = upper_num = None
+                    lower_num = upper_num = max_torque = None
                 axis_elem = joint.find("axis")
                 if axis_elem is not None:
                     j_attrib["axis"] = axis_elem.attrib.get("xyz", "0 0 1")
                 ET.SubElement(body, "joint", attrib=j_attrib)
 
                 # Use PD gains from the joint parameters metadata.
-                for suffix, param in joint_params_metadata.pd_params.items():
+                for suffix, param in joint_params_metadata.suffix_to_pd_params.items():
                     if j_name.endswith(suffix):
                         stiffness_val: float = param.kp
                         damping_val: float = param.kd
+                        # Use metadata max_torque if effort not specified in URDF
+                        if max_torque is None:
+                            max_torque = param.max_torque
                         break
                 else:
-                    stiffness_val = joint_params_metadata.default_kp
-                    damping_val = joint_params_metadata.default_kd
+                    stiffness_val = joint_params_metadata.default.kp
+                    damping_val = joint_params_metadata.default.kd
 
                 actuator_joints.append(
                     ParsedJointParams(
@@ -620,6 +626,7 @@ def convert_urdf_to_mjcf(
                         damping=damping_val,
                         lower=lower_num,
                         upper=upper_num,
+                        max_torque=max_torque,
                     )
                 )
 
@@ -749,22 +756,30 @@ def convert_urdf_to_mjcf(
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
     for joint_params in actuator_joints:
-        ctrlrange = (
-            f"{joint_params.lower} {joint_params.upper}"
-            if (joint_params.lower is not None and joint_params.upper is not None)
-            else "-1 1"
-        )
-        ET.SubElement(
-            actuator_elem,
-            "position",
-            attrib={
-                "name": f"{joint_params.name}_ctrl",
-                "joint": joint_params.name,
-                "kp": f"{joint_params.stiffness:.8f}",
-                "kv": f"{joint_params.damping:.8f}",
-                "ctrlrange": ctrlrange,
-            },
-        )
+        attrib: dict[str, str] = {
+            "name": f"{joint_params.name}_ctrl",
+            "joint": joint_params.name,
+        }
+
+        # Adds the joint PD parameters.
+        if joint_params.stiffness is not None:
+            attrib["kp"] = f"{joint_params.stiffness:.8f}"
+        if joint_params.damping is not None:
+            attrib["kv"] = f"{joint_params.damping:.8f}"
+
+        # Adds the joint torque limit.
+        if joint_params.max_torque is not None:
+            attrib["forcerange"] = f"-{joint_params.max_torque:.8f} {joint_params.max_torque:.8f}"
+            attrib["forcelimited"] = "true"
+
+        # Adds the joint limits.
+        if joint_params.lower is not None and joint_params.upper is not None:
+            attrib["ctrlrange"] = f"{joint_params.lower} {joint_params.upper}"
+            attrib["ctrllimited"] = "true"
+        elif joint_params.lower is not None or joint_params.upper is not None:
+            raise ValueError(f"Joint {joint_params.name} has a lower or upper limit but no ctrlrange")
+
+        ET.SubElement(actuator_elem, "position", attrib=attrib)
 
     # Add additional worldbody elements (ground, lights, etc.).
     add_worldbody_elements(mjcf_root)
