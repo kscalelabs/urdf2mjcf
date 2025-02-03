@@ -17,6 +17,7 @@ def test_conversion_output(tmpdir: Path) -> None:
         urdf_path=urdf_path,
         mjcf_path=mjcf_path,
         copy_meshes=False,
+        metadata_file=urdf_path.parent / "metadata.json",
     )
     assert mjcf_path.exists()
 

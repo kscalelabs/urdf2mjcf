@@ -8,6 +8,7 @@ import shutil
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 import colorlogging
 from pydantic import BaseModel
@@ -28,6 +29,36 @@ class JointParam(BaseModel):
 class JointParamsMetadata(BaseModel):
     suffix_to_pd_params: dict[str, JointParam] = {}
     default: JointParam | None = None
+
+    class Config:
+        extra = "forbid"
+
+
+class ImuSensor(BaseModel):
+    """Configuration for an IMU sensor.
+
+    Attributes:
+        link_name: Name of the link to attach the IMU to
+        pos: Position relative to link frame, in the form [x, y, z]
+        quat: Quaternion relative to link frame, in the form [w, x, y, z]
+    """
+
+    link_name: str
+    pos: list[float] = [0.0, 0.0, 0.0]
+    quat: list[float] = [1.0, 0.0, 0.0, 0.0]
+
+
+class ConversionMetadata(BaseModel):
+    """Configuration for URDF to MJCF conversion.
+
+    Attributes:
+        joint_params: Optional PD gains metadata for joints
+        cameras: Optional list of camera sensor configurations
+        imus: Optional list of IMU sensor configurations
+    """
+
+    joint_params: JointParamsMetadata | None = None
+    imus: list[ImuSensor] = []
 
     class Config:
         extra = "forbid"
@@ -393,11 +424,82 @@ def rpy_to_quat(rpy_str: str) -> str:
     return f"{qw} {qx} {qy} {qz}"
 
 
+def add_sensors(
+    mjcf_root: ET.Element,
+    imus: Sequence[ImuSensor] | None = None,
+) -> None:
+    """Add sensors to the MJCF model.
+
+    Args:
+        mjcf_root: Root element of MJCF model
+        imus: List of IMU sensor configurations
+    """
+    worldbody = mjcf_root.find("worldbody")
+    if worldbody is None:
+        raise ValueError("Worldbody element not found in MJCF model")
+
+    sensor_elem = worldbody.find("sensor")
+    if sensor_elem is None:
+        sensor_elem = ET.SubElement(mjcf_root, "sensor")
+
+    if imus:
+        for imu in imus:
+            # Find the link to attach the IMU to
+            link_body = mjcf_root.find(f".//body[@name='{imu.link_name}']")
+            if link_body is None:
+                logger.warning(f"Link {imu.link_name} not found for IMU sensor")
+                continue
+
+            # Create a site for the IMU
+            site_name = f"{imu.link_name}_site"
+
+            if len(imu.pos) != 3:
+                raise ValueError(f"IMU position must be a 3-element list, got {imu.pos}")
+            imu_pos = " ".join(str(p) for p in imu.pos)
+
+            if len(imu.quat) != 4:
+                raise ValueError(f"IMU quaternion must be a 4-element list, got {imu.quat}")
+            imu_quat = " ".join(str(q) for q in imu.quat)
+
+            # Only make this element if the site doesn't already exist.
+            site_elem = link_body.find(f".//site[@name='{site_name}']")
+            if site_elem is None:
+                ET.SubElement(
+                    link_body,
+                    "site",
+                    attrib={
+                        "name": site_name,
+                        "pos": imu_pos,
+                        "quat": imu_quat,
+                        "size": "0.01",
+                    },
+                )
+
+            # Add the IMU sensors (accelerometer and gyroscope)
+            ET.SubElement(
+                sensor_elem,
+                "accelerometer",
+                attrib={
+                    "name": f"{imu.link_name}_acc",
+                    "site": site_name,
+                },
+            )
+            ET.SubElement(
+                sensor_elem,
+                "gyro",
+                attrib={
+                    "name": f"{imu.link_name}_gyro",
+                    "site": site_name,
+                },
+            )
+
+
 def convert_urdf_to_mjcf(
     urdf_path: str | Path,
     mjcf_path: str | Path | None = None,
     copy_meshes: bool = False,
-    joint_params_metadata: JointParamsMetadata | None = None,
+    metadata: ConversionMetadata | None = None,
+    metadata_file: str | Path | None = None,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
@@ -407,7 +509,10 @@ def convert_urdf_to_mjcf(
             with an ".xml" extension is used.
         copy_meshes: If True, mesh files will be copied to the MJCF meshes
             directory.
-        joint_params_metadata: Optional PD gains metadata for joints.
+        metadata: Optional conversion metadata containing joint parameters
+            and sensor configurations.
+        metadata_file: Optional path to a JSON file containing conversion
+            metadata.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
@@ -415,8 +520,15 @@ def convert_urdf_to_mjcf(
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if joint_params_metadata is None:
-        joint_params_metadata = JointParamsMetadata()
+    if metadata_file is not None and metadata is not None:
+        raise ValueError("Cannot specify both metadata and metadata_file")
+    elif metadata_file is not None:
+        with open(metadata_file, "r") as f:
+            metadata = ConversionMetadata.model_validate_json(f.read())
+    if metadata is None:
+        metadata = ConversionMetadata()
+
+    joint_params_metadata = metadata.joint_params or JointParamsMetadata()
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
@@ -750,7 +862,6 @@ def convert_urdf_to_mjcf(
     # Create a root body with a freejoint and an IMU site; the z position uses the computed offset.
     root_body = ET.Element("body", attrib={"name": "root", "pos": f"0 0 {computed_offset}", "quat": "1 0 0 0"})
     ET.SubElement(root_body, "freejoint", attrib={"name": "root"})
-    ET.SubElement(root_body, "site", attrib={"name": "imu", "size": "0.01", "pos": "0 0 0"})
     root_body.append(robot_body)
     worldbody.append(root_body)
 
@@ -784,6 +895,9 @@ def convert_urdf_to_mjcf(
 
     # Add additional worldbody elements (ground, lights, etc.).
     add_worldbody_elements(mjcf_root)
+
+    # Add sensors after adding worldbody elements
+    add_sensors(mjcf_root, imus=metadata.imus)
 
     # Add mesh assets to the asset section.
     asset_elem: ET.Element | None = mjcf_root.find("asset")
@@ -829,12 +943,12 @@ def main() -> None:
     parser.add_argument(
         "--metadata",
         type=str,
-        help="A JSON string containing joint PD parameters.",
+        help="A JSON string containing conversion metadata (joint params and sensors).",
     )
     parser.add_argument(
         "--metadata-file",
         type=str,
-        help="A JSON file containing joint PD parameters.",
+        help="A JSON file containing conversion metadata (joint params and sensors).",
     )
 
     args = parser.parse_args()
@@ -850,15 +964,20 @@ def main() -> None:
             raw_metadata = json.load(f)
     elif args.metadata is not None:
         raw_metadata = json.loads(args.metadata)
-    metadata: JointParamsMetadata | None = (
-        None if raw_metadata is None else JointParamsMetadata.model_validate(raw_metadata, strict=True)
+    elif (metadata_path := Path(args.urdf_path).parent / "metadata.json").exists():
+        logger.warning("Using metadata from %s", metadata_path)
+        with open(metadata_path, "r") as f:
+            raw_metadata = json.load(f)
+
+    metadata: ConversionMetadata | None = (
+        None if raw_metadata is None else ConversionMetadata.model_validate(raw_metadata, strict=True)
     )
 
     convert_urdf_to_mjcf(
         urdf_path=args.urdf_path,
         mjcf_path=args.output,
         copy_meshes=args.copy_meshes,
-        joint_params_metadata=metadata,
+        metadata=metadata,
     )
 
 
