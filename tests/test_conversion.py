@@ -10,8 +10,8 @@ from urdf2mjcf.convert import convert_urdf_to_mjcf
 
 @pytest.mark.slow
 def test_conversion_output(tmpdir: Path) -> None:
-    urdf_path = Path(__file__).parent / "sample" / "robot.urdf"
-    mjcf_path = tmpdir / "robot.mjcf"
+    urdf_path = Path(__file__).parent / "kbot" / "kbot.urdf"
+    mjcf_path = tmpdir / "kbot.mjcf"
 
     convert_urdf_to_mjcf(
         urdf_path=urdf_path,

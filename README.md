@@ -19,3 +19,12 @@
 Convert URDF to MJCF XML.
 
 See the documentation for this project [here](https://docs.kscale.dev/docs/urdf2mjcf).
+
+## Testing
+
+After making changes, try running it against the test URDF:
+
+```bash
+urdf2mjcf examples/kbot/kbot.urdf
+python -m mujoco.viewer --mjcf examples/kbot/kbot.xml
+```
