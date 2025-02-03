@@ -17,7 +17,8 @@ from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
 
-BASE_LINK_SITE_NAME = "base_link_site"
+ROOT_BODY_NAME = "root"
+ROOT_SITE_NAME = f"{ROOT_BODY_NAME}_site"
 
 
 class JointParam(BaseModel):
@@ -439,19 +440,47 @@ def add_sensors(
         mjcf_root: Root element of MJCF model
         imus: List of IMU sensor configurations
     """
-    worldbody = mjcf_root.find("worldbody")
-    if worldbody is None:
-        raise ValueError("Worldbody element not found in MJCF model")
-
-    sensor_elem = worldbody.find("sensor")
+    sensor_elem = mjcf_root.find("sensor")
     if sensor_elem is None:
         sensor_elem = ET.SubElement(mjcf_root, "sensor")
 
     # Adds sensors for global reference frame values.
-    ET.SubElement(sensor_elem, "framepos", attrib={"name": "base_link_pos", "site": BASE_LINK_SITE_NAME})
-    ET.SubElement(sensor_elem, "framequat", attrib={"name": "base_link_quat", "site": BASE_LINK_SITE_NAME})
-    ET.SubElement(sensor_elem, "framelinvel", attrib={"name": "base_link_vel", "site": BASE_LINK_SITE_NAME})
-    ET.SubElement(sensor_elem, "frameangvel", attrib={"name": "base_link_ang_vel", "site": BASE_LINK_SITE_NAME})
+    ET.SubElement(
+        sensor_elem,
+        "framepos",
+        attrib={
+            "name": "base_link_pos",
+            "objtype": "site",
+            "objname": ROOT_SITE_NAME,
+        },
+    )
+    ET.SubElement(
+        sensor_elem,
+        "framequat",
+        attrib={
+            "name": "base_link_quat",
+            "objtype": "site",
+            "objname": ROOT_SITE_NAME,
+        },
+    )
+    ET.SubElement(
+        sensor_elem,
+        "framelinvel",
+        attrib={
+            "name": "base_link_vel",
+            "objtype": "site",
+            "objname": ROOT_SITE_NAME,
+        },
+    )
+    ET.SubElement(
+        sensor_elem,
+        "frameangvel",
+        attrib={
+            "name": "base_link_ang_vel",
+            "objtype": "site",
+            "objname": ROOT_SITE_NAME,
+        },
+    )
 
     if imus:
         for imu in imus:
@@ -880,9 +909,9 @@ def convert_urdf_to_mjcf(
     logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
 
     # Create a root body with a freejoint and an IMU site; the z position uses the computed offset.
-    root_body = ET.Element("body", attrib={"name": "root", "pos": f"0 0 {computed_offset}", "quat": "1 0 0 0"})
-    ET.SubElement(root_body, "freejoint", attrib={"name": "root"})
-    ET.SubElement(root_body, "site", attrib={"name": BASE_LINK_SITE_NAME, "pos": "0 0 0", "quat": "1 0 0 0"})
+    root_body = ET.Element("body", attrib={"name": ROOT_BODY_NAME, "pos": f"0 0 {computed_offset}", "quat": "1 0 0 0"})
+    ET.SubElement(root_body, "freejoint", attrib={"name": ROOT_BODY_NAME})
+    ET.SubElement(root_body, "site", attrib={"name": ROOT_SITE_NAME, "pos": "0 0 0", "quat": "1 0 0 0"})
     root_body.append(robot_body)
     worldbody.append(root_body)
 
