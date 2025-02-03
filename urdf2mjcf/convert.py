@@ -17,6 +17,8 @@ from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
 
+BASE_LINK_SITE_NAME = "base_link_site"
+
 
 class JointParam(BaseModel):
     kp: float | None = None
@@ -46,6 +48,9 @@ class ImuSensor(BaseModel):
     link_name: str
     pos: list[float] = [0.0, 0.0, 0.0]
     quat: list[float] = [1.0, 0.0, 0.0, 0.0]
+    acc_noise: float | None = None
+    gyro_noise: float | None = None
+    mag_noise: float | None = None
 
 
 class ConversionMetadata(BaseModel):
@@ -442,6 +447,12 @@ def add_sensors(
     if sensor_elem is None:
         sensor_elem = ET.SubElement(mjcf_root, "sensor")
 
+    # Adds sensors for global reference frame values.
+    ET.SubElement(sensor_elem, "framepos", attrib={"name": "base_link_pos", "site": BASE_LINK_SITE_NAME})
+    ET.SubElement(sensor_elem, "framequat", attrib={"name": "base_link_quat", "site": BASE_LINK_SITE_NAME})
+    ET.SubElement(sensor_elem, "framelinvel", attrib={"name": "base_link_vel", "site": BASE_LINK_SITE_NAME})
+    ET.SubElement(sensor_elem, "frameangvel", attrib={"name": "base_link_ang_vel", "site": BASE_LINK_SITE_NAME})
+
     if imus:
         for imu in imus:
             # Find the link to attach the IMU to
@@ -475,23 +486,32 @@ def add_sensors(
                     },
                 )
 
-            # Add the IMU sensors (accelerometer and gyroscope)
-            ET.SubElement(
-                sensor_elem,
-                "accelerometer",
-                attrib={
-                    "name": f"{imu.link_name}_acc",
-                    "site": site_name,
-                },
-            )
-            ET.SubElement(
-                sensor_elem,
-                "gyro",
-                attrib={
-                    "name": f"{imu.link_name}_gyro",
-                    "site": site_name,
-                },
-            )
+            # Add the accelerometer.
+            acc_attrib = {
+                "name": f"{imu.link_name}_acc",
+                "site": site_name,
+            }
+            if imu.acc_noise is not None:
+                acc_attrib["noise"] = str(imu.acc_noise)
+            ET.SubElement(sensor_elem, "accelerometer", attrib=acc_attrib)
+
+            # Add the gyroscope.
+            gyro_attrib = {
+                "name": f"{imu.link_name}_gyro",
+                "site": site_name,
+            }
+            if imu.gyro_noise is not None:
+                gyro_attrib["noise"] = str(imu.gyro_noise)
+            ET.SubElement(sensor_elem, "gyro", attrib=gyro_attrib)
+
+            # Adds the magnetometer.
+            mag_attrib = {
+                "name": f"{imu.link_name}_mag",
+                "site": site_name,
+            }
+            if imu.mag_noise is not None:
+                mag_attrib["noise"] = str(imu.mag_noise)
+            ET.SubElement(sensor_elem, "magnetometer", attrib=mag_attrib)
 
 
 def convert_urdf_to_mjcf(
@@ -862,6 +882,7 @@ def convert_urdf_to_mjcf(
     # Create a root body with a freejoint and an IMU site; the z position uses the computed offset.
     root_body = ET.Element("body", attrib={"name": "root", "pos": f"0 0 {computed_offset}", "quat": "1 0 0 0"})
     ET.SubElement(root_body, "freejoint", attrib={"name": "root"})
+    ET.SubElement(root_body, "site", attrib={"name": BASE_LINK_SITE_NAME, "pos": "0 0 0", "quat": "1 0 0 0"})
     root_body.append(robot_body)
     worldbody.append(root_body)
 
