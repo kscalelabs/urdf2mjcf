@@ -8,64 +8,16 @@ import shutil
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import colorlogging
-from pydantic import BaseModel
 
+from urdf2mjcf.model import ConversionMetadata, JointParamsMetadata
+from urdf2mjcf.postprocess.add_sensors import add_sensors
+from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.merge_fixed import remove_fixed_joints
 from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
-
-
-class JointParam(BaseModel):
-    kp: float | None = None
-    kd: float | None = None
-
-    class Config:
-        extra = "forbid"
-
-
-class JointParamsMetadata(BaseModel):
-    suffix_to_pd_params: dict[str, JointParam] = {}
-    default: JointParam | None = None
-
-    class Config:
-        extra = "forbid"
-
-
-class ImuSensor(BaseModel):
-    """Configuration for an IMU sensor.
-
-    Attributes:
-        link_name: Name of the link to attach the IMU to
-        pos: Position relative to link frame, in the form [x, y, z]
-        quat: Quaternion relative to link frame, in the form [w, x, y, z]
-    """
-
-    link_name: str
-    pos: list[float] = [0.0, 0.0, 0.0]
-    quat: list[float] = [1.0, 0.0, 0.0, 0.0]
-    acc_noise: float | None = None
-    gyro_noise: float | None = None
-    mag_noise: float | None = None
-
-
-class ConversionMetadata(BaseModel):
-    """Configuration for URDF to MJCF conversion.
-
-    Attributes:
-        joint_params: Optional PD gains metadata for joints
-        cameras: Optional list of camera sensor configurations
-        imus: Optional list of IMU sensor configurations
-    """
-
-    joint_params: JointParamsMetadata | None = None
-    imus: list[ImuSensor] = []
-
-    class Config:
-        extra = "forbid"
 
 
 @dataclass
@@ -428,145 +380,23 @@ def rpy_to_quat(rpy_str: str) -> str:
     return f"{qw} {qx} {qy} {qz}"
 
 
-def add_sensors(
-    mjcf_root: ET.Element,
-    root_link_name: str,
-    imus: Sequence[ImuSensor] | None = None,
-) -> None:
-    """Add sensors to the MJCF model.
-
-    Args:
-        mjcf_root: Root element of MJCF model
-        imus: List of IMU sensor configurations
-    """
-    sensor_elem = mjcf_root.find("sensor")
-    if sensor_elem is None:
-        sensor_elem = ET.SubElement(mjcf_root, "sensor")
-
-    def add_base_sensors(link_name: str) -> None:
-        ET.SubElement(
-            sensor_elem,
-            "framepos",
-            attrib={
-                "name": "base_link_pos",
-                "objtype": "site",
-                "objname": link_name,
-            },
-        )
-        ET.SubElement(
-            sensor_elem,
-            "framequat",
-            attrib={
-                "name": "base_link_quat",
-                "objtype": "site",
-                "objname": link_name,
-            },
-        )
-        ET.SubElement(
-            sensor_elem,
-            "framelinvel",
-            attrib={
-                "name": "base_link_vel",
-                "objtype": "site",
-                "objname": link_name,
-            },
-        )
-        ET.SubElement(
-            sensor_elem,
-            "frameangvel",
-            attrib={
-                "name": "base_link_ang_vel",
-                "objtype": "site",
-                "objname": link_name,
-            },
-        )
-
-    if imus:
-        for imu in imus:
-            # Find the link to attach the IMU to
-            link_body = mjcf_root.find(f".//body[@name='{imu.link_name}']")
-            if link_body is None:
-                logger.warning(f"Link {imu.link_name} not found for IMU sensor")
-                continue
-
-            # Create a site for the IMU
-            site_name = f"{imu.link_name}_site"
-
-            if len(imu.pos) != 3:
-                raise ValueError(f"IMU position must be a 3-element list, got {imu.pos}")
-            imu_pos = " ".join(str(p) for p in imu.pos)
-
-            if len(imu.quat) != 4:
-                raise ValueError(f"IMU quaternion must be a 4-element list, got {imu.quat}")
-            imu_quat = " ".join(str(q) for q in imu.quat)
-
-            # Only make this element if the site doesn't already exist.
-            site_elem = link_body.find(f".//site[@name='{site_name}']")
-            if site_elem is None:
-                ET.SubElement(
-                    link_body,
-                    "site",
-                    attrib={
-                        "name": site_name,
-                        "pos": imu_pos,
-                        "quat": imu_quat,
-                        "size": "0.01",
-                    },
-                )
-
-            # Add the accelerometer.
-            acc_attrib = {
-                "name": f"{imu.link_name}_acc",
-                "site": site_name,
-            }
-            if imu.acc_noise is not None:
-                acc_attrib["noise"] = str(imu.acc_noise)
-            ET.SubElement(sensor_elem, "accelerometer", attrib=acc_attrib)
-
-            # Add the gyroscope.
-            gyro_attrib = {
-                "name": f"{imu.link_name}_gyro",
-                "site": site_name,
-            }
-            if imu.gyro_noise is not None:
-                gyro_attrib["noise"] = str(imu.gyro_noise)
-            ET.SubElement(sensor_elem, "gyro", attrib=gyro_attrib)
-
-            # Adds the magnetometer.
-            mag_attrib = {
-                "name": f"{imu.link_name}_mag",
-                "site": site_name,
-            }
-            if imu.mag_noise is not None:
-                mag_attrib["noise"] = str(imu.mag_noise)
-            ET.SubElement(sensor_elem, "magnetometer", attrib=mag_attrib)
-
-            # Adds other sensors.
-            add_base_sensors(imu.link_name)
-
-    else:
-        add_base_sensors(root_link_name)
-
-
 def convert_urdf_to_mjcf(
     urdf_path: str | Path,
     mjcf_path: str | Path | None = None,
     copy_meshes: bool = False,
     metadata: ConversionMetadata | None = None,
     metadata_file: str | Path | None = None,
+    floating_base: bool = False,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
     Args:
         urdf_path: The path to the URDF file.
-        mjcf_path: The desired output MJCF file path. If None, the URDF path
-            with an ".xml" extension is used.
-        copy_meshes: If True, mesh files will be copied to the MJCF meshes
-            directory.
-        metadata: Optional conversion metadata containing joint parameters
-            and sensor configurations.
-        metadata_file: Optional path to a JSON file containing conversion
-            metadata.
+        mjcf_path: The desired output MJCF file path.
+        copy_meshes: If True, mesh files will be copied.
+        metadata: Optional conversion metadata.
+        metadata_file: Optional path to metadata file.
+        floating_base: Whether to make the base floating.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
@@ -908,14 +738,7 @@ def convert_urdf_to_mjcf(
     if robot_body is None:
         raise ValueError("Failed to build robot body")
 
-    # Adds free joint to the root link.
-    ET.SubElement(
-        robot_body,
-        "joint",
-        attrib={"name": "floating_base", "type": "free"},
-    )
-
-    # Adds a site to the root link.
+    # Add a site to the root link for sensors
     root_site_name = f"{root_link_name}_site"
     ET.SubElement(
         robot_body,
@@ -973,8 +796,10 @@ def convert_urdf_to_mjcf(
     # Add additional worldbody elements (ground, lights, etc.).
     add_worldbody_elements(mjcf_root)
 
-    # Add sensors after adding worldbody elements
-    add_sensors(mjcf_root, root_site_name, imus=metadata.imus)
+    # Save the initial MJCF file
+    save_xml(mjcf_path, ET.ElementTree(mjcf_root))
+    fix_base_joint(mjcf_path, floating_base=floating_base)
+    add_sensors(mjcf_path, root_site_name, imus=metadata.imus if metadata else None)
 
     # Add mesh assets to the asset section.
     asset_elem: ET.Element | None = mjcf_root.find("asset")
@@ -993,9 +818,6 @@ def convert_urdf_to_mjcf(
             target_path: Path = target_mesh_dir / Path(filename).name
             if source_path != target_path:
                 shutil.copy2(source_path, target_path)
-
-    # Save the updated MJCF file.
-    save_xml(mjcf_path, ET.ElementTree(mjcf_root))
 
 
 def main() -> None:
@@ -1032,6 +854,11 @@ def main() -> None:
         action="store_true",
         help="Merge fixed joints into their parent body.",
     )
+    parser.add_argument(
+        "--floating-base",
+        action="store_true",
+        help="Make the base joint floating (free).",
+    )
 
     args = parser.parse_args()
 
@@ -1060,6 +887,7 @@ def main() -> None:
         mjcf_path=args.output,
         copy_meshes=args.copy_meshes,
         metadata=metadata,
+        floating_base=args.floating_base,
     )
 
     if args.merge_fixed:
