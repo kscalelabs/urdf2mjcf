@@ -852,22 +852,6 @@ def main() -> None:
         type=str,
         help="A JSON file containing conversion metadata (joint params and sensors).",
     )
-    parser.add_argument(
-        "--merge-fixed",
-        action="store_true",
-        help="Merge fixed joints into their parent body.",
-    )
-    parser.add_argument(
-        "--no-floating-base",
-        action="store_true",
-        help="Do not add a floating base to the MJCF model.",
-    )
-    parser.add_argument(
-        "--remove-base-inertial",
-        action="store_true",
-        help="Remove the base inertial element from the MJCF model.",
-    )
-
     args = parser.parse_args()
 
     colorlogging.configure()
@@ -895,9 +879,6 @@ def main() -> None:
         mjcf_path=args.output,
         copy_meshes=args.copy_meshes,
         metadata=metadata,
-        merge_fixed=args.merge_fixed,
-        floating_base=not args.no_floating_base,
-        remove_base_inertial=args.remove_base_inertial,
     )
 
 
