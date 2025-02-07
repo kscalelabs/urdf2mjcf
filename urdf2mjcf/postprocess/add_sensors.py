@@ -1,5 +1,6 @@
 """Defines a post-processing function that adds sensors to the MJCF model."""
 
+import argparse
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -134,3 +135,16 @@ def add_sensors(
 
     # Save changes
     tree.write(mjcf_path, encoding="utf-8", xml_declaration=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mjcf_path", type=Path)
+    args = parser.parse_args()
+
+    add_sensors(args.mjcf_path, "base_link")
+
+
+if __name__ == "__main__":
+    # python -m urdf2mjcf.postprocess.add_sensors
+    main()

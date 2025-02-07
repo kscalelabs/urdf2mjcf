@@ -386,7 +386,7 @@ def convert_urdf_to_mjcf(
     copy_meshes: bool = False,
     metadata: ConversionMetadata | None = None,
     metadata_file: str | Path | None = None,
-    floating_base: bool = False,
+    floating_base: bool = True,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
@@ -396,7 +396,7 @@ def convert_urdf_to_mjcf(
         copy_meshes: If True, mesh files will be copied.
         metadata: Optional conversion metadata.
         metadata_file: Optional path to metadata file.
-        floating_base: Whether to make the base floating.
+        floating_base: Whether to add a floating base to the MJCF model.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
@@ -796,19 +796,14 @@ def convert_urdf_to_mjcf(
     # Add additional worldbody elements (ground, lights, etc.).
     add_worldbody_elements(mjcf_root)
 
-    # Save the initial MJCF file
-    save_xml(mjcf_path, ET.ElementTree(mjcf_root))
-    fix_base_joint(mjcf_path, floating_base=floating_base)
-    add_sensors(mjcf_path, root_site_name, imus=metadata.imus if metadata else None)
-
-    # Add mesh assets to the asset section.
+    # Add mesh assets to the asset section before saving
     asset_elem: ET.Element | None = mjcf_root.find("asset")
     if asset_elem is None:
         asset_elem = ET.SubElement(mjcf_root, "asset")
     for mesh_name, filename in mesh_assets.items():
         ET.SubElement(asset_elem, "mesh", attrib={"name": mesh_name, "file": Path(filename).name})
 
-    # Copy mesh files if requested.
+    # Copy mesh files if requested
     if copy_meshes:
         urdf_dir: Path = urdf_path.parent.resolve()
         target_mesh_dir: Path = (mjcf_path.parent / "meshes").resolve()
@@ -818,6 +813,14 @@ def convert_urdf_to_mjcf(
             target_path: Path = target_mesh_dir / Path(filename).name
             if source_path != target_path:
                 shutil.copy2(source_path, target_path)
+
+    # Save the initial MJCF file
+    save_xml(mjcf_path, ET.ElementTree(mjcf_root))
+
+    # Apply post-processing steps
+    if floating_base:
+        fix_base_joint(mjcf_path)
+    add_sensors(mjcf_path, root_site_name, imus=metadata.imus if metadata else None)
 
 
 def main() -> None:
@@ -855,9 +858,9 @@ def main() -> None:
         help="Merge fixed joints into their parent body.",
     )
     parser.add_argument(
-        "--floating-base",
+        "--no-floating-base",
         action="store_true",
-        help="Make the base joint floating (free).",
+        help="Do not add a floating base to the MJCF model.",
     )
 
     args = parser.parse_args()
@@ -887,7 +890,7 @@ def main() -> None:
         mjcf_path=args.output,
         copy_meshes=args.copy_meshes,
         metadata=metadata,
-        floating_base=args.floating_base,
+        floating_base=not args.no_floating_base,
     )
 
     if args.merge_fixed:
