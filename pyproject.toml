@@ -52,7 +52,6 @@ target-version = "py310"
 select = ["ANN", "D", "E", "F", "I", "N", "PGH", "PLC", "PLE", "PLR", "PLW", "W"]
 
 ignore = [
-    "ANN101", "ANN102",
     "D101", "D102", "D103", "D104", "D105", "D106", "D107",
     "N812", "N817",
     "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
