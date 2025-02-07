@@ -62,7 +62,7 @@ def main() -> None:
     parser.add_argument("mjcf_path", type=Path)
     args = parser.parse_args()
 
-    fix_base_joint(args.mjcf_path, floating_base=True)
+    fix_base_joint(args.mjcf_path)
 
 
 if __name__ == "__main__":

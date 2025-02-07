@@ -47,8 +47,8 @@ def remove_fixed_joints(mjcf_path: str | Path) -> None:
         site = ET.SubElement(parent_body, "site")
         site.set("name", child_name)
         for attr in ["pos", "quat", "euler"]:
-            if child_body.get(attr):
-                site.set(attr, child_body.get(attr))
+            if (val := child_body.get(attr)) is not None:
+                site.set(attr, val)
 
         # Transfer all child elements except inertial to the parent
         for grandchild in child_body:
