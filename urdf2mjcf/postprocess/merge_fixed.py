@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def remove_fixed_joints(mjcf_path: str | Path) -> None:
-    """Merges fixed joints into their parent body.
+    """Removes fixed joints.
 
     This function works by finding all of the body links which do not have a
     joint element, and converting them from a body element to a site element.
@@ -43,7 +43,7 @@ def remove_fixed_joints(mjcf_path: str | Path) -> None:
     for parent_body, child_body in bodies_to_merge:
         parent_name = parent_body.attrib["name"]
         child_name = child_body.attrib["name"]
-        logger.info("Merging body %s into %s", child_name, parent_name)
+        logger.info("Converting body %s into site on body %s", child_name, parent_name)
 
         # Create a site element at the position of the merged body
         site = ET.SubElement(parent_body, "site")
@@ -54,11 +54,11 @@ def remove_fixed_joints(mjcf_path: str | Path) -> None:
 
         # Transfer all child elements except inertial to the parent
         for grandchild in child_body:
+            child_body.remove(grandchild)
             if grandchild.tag != "inertial":
-                child_body.remove(grandchild)
                 parent_body.append(grandchild)
 
-        # Remove the merged body
+        # Remove the body.
         parent_body.remove(child_body)
 
     # Save the modified XML

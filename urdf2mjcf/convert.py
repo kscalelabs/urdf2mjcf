@@ -694,7 +694,7 @@ def convert_urdf_to_mjcf(
                 pos_geom = "0 0 0"
                 quat_geom = "1 0 0 0"
             geom_attrib = {
-                "name": f"{link_name}_visual_{idx}",
+                "name": f"{link_name}_visual_{idx}" if len(visuals) > 1 else f"{link_name}_visual",
                 "pos": pos_geom,
                 "quat": quat_geom,
             }
@@ -817,8 +817,8 @@ def convert_urdf_to_mjcf(
 
     # Apply post-processing steps
     if metadata.floating_base:
-        fix_base_joint(mjcf_path, remove_base_inertial=metadata.remove_base_inertial)
-    if metadata.merge_fixed:
+        fix_base_joint(mjcf_path)
+    if metadata.remove_fixed_joints:
         remove_fixed_joints(mjcf_path)
     add_sensors(mjcf_path, root_site_name, metadata=metadata)
 

@@ -42,17 +42,15 @@ class ConversionMetadata(BaseModel):
     Attributes:
         joint_params: Optional PD gains metadata for joints
         imus: Optional list of IMU sensor configurations
-        merge_fixed: If True, merge fixed joints
+        remove_fixed_joints: If True, convert fixed child bodies into sites on
+            their parent bodies
         floating_base: If True, add a floating base to the MJCF model
-        remove_base_inertial: If True, remove the base inertial element from
-            the MJCF model
     """
 
     joint_params: JointParamsMetadata | None = None
     imus: list[ImuSensor] = []
-    merge_fixed: bool = False
+    remove_fixed_joints: bool = False
     floating_base: bool = True
-    remove_base_inertial: bool = False
 
     class Config:
         extra = "forbid"

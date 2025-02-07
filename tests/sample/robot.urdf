@@ -13,6 +13,21 @@
     <color rgba="0.8 0.8 0.8 1" />
   </material>
 
+  <link name="IMU">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0" />
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1" />
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.05 0.05 0.05" />
+      </geometry>
+    </visual>
+  </link>
+
   <!-- VRML link name="WAIST_LINK0" -->
   <link name="BODY">
     <inertial>
@@ -34,7 +49,6 @@
         <box size="0.08 0.08 0.08" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="WAIST_LINK1">
@@ -50,7 +64,6 @@
       </geometry>
       <material name="WAIST_LINK1_APP" />
     </visual>
-
   </link>
 
   <link name="WAIST_LINK2">
@@ -75,7 +88,6 @@
       </geometry>
       <material name="WAIST_LINK2_APP" />
     </visual>
-
   </link>
 
   <!-- VRML link name="WAIST_LINK3" -->
@@ -116,7 +128,6 @@
       </geometry>
       <material name="WAIST_LINK3_APP" />
     </visual>
-
   </link>
 
   <link name="LARM_LINK1">
@@ -132,7 +143,6 @@
         <cylinder length="0.05" radius="0.025" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LARM_LINK2">
@@ -155,7 +165,6 @@
         <box size="0.05 0.05 0.163" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LARM_LINK3">
@@ -171,7 +180,6 @@
         <cylinder length="0.05" radius="0.025" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LARM_LINK4">
@@ -194,7 +202,6 @@
         <box size="0.05 0.05 0.147" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LARM_LINK5">
@@ -210,7 +217,6 @@
         <cylinder length="0.05" radius="0.025" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LARM_LINK6">
@@ -239,7 +245,6 @@
         <box size="0.05 0.03 0.175" />
       </geometry>
     </visual>
-
   </link>
 
   <!-- VRML link name="LARM_LINK7" -->
@@ -256,7 +261,6 @@
         <box size="0.05 0.03 0.15" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RARM_LINK1">
@@ -419,8 +423,6 @@
         <cylinder radius="0.05" length="0.1" />
       </geometry>
     </visual>
-
-
   </link>
 
   <link name="LLEG_LINK3">
@@ -443,7 +445,6 @@
         <cylinder radius="0.05" length="0.1" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LLEG_LINK4">
@@ -466,7 +467,6 @@
         <box size="0.1 0.1 0.2" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="LLEG_LINK5">
@@ -481,7 +481,6 @@
         <cylinder length="0.1" radius="0.05" />
       </geometry>
     </visual>
-
   </link>
 
   <!-- VRML link name="LLEG_LINK6" -->
@@ -505,7 +504,6 @@
         <cylinder length="0.1" radius="0.05" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RLEG_LINK1">
@@ -521,7 +519,6 @@
         <cylinder radius="0.05" length="0.1" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RLEG_LINK2">
@@ -537,7 +534,6 @@
         <cylinder radius="0.05" length="0.1" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RLEG_LINK3">
@@ -560,7 +556,6 @@
         <cylinder radius="0.05" length="0.1" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RLEG_LINK4">
@@ -583,7 +578,6 @@
         <box size="0.1 0.1 0.2" />
       </geometry>
     </visual>
-
   </link>
 
   <link name="RLEG_LINK5">
@@ -621,14 +615,19 @@
         <cylinder length="0.1" radius="0.05" />
       </geometry>
     </visual>
-
   </link>
 
 
-  <!--   Joints following below -->
+  <!--  Joints following below -->
   <joint name="waist" type="fixed">
     <parent link="base_link" />
     <child link="BODY" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <joint name="imu" type="fixed">
+    <parent link="BODY" />
+    <child link="IMU" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
 

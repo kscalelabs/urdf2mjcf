@@ -7,11 +7,12 @@
   },
   "imus": [
     {
-      "link_name": "base_link",
+      "site_name": "IMU",
       "pos": [0.0, 0.0, 0.0],
       "quat": [1.0, 0.0, 0.0, 0.0],
       "acc_noise": 0.001,
       "gyro_noise": 0.01
     }
-  ]
+  ],
+  "remove_fixed_joints": true
 }

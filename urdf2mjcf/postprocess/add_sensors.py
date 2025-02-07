@@ -76,7 +76,8 @@ def add_sensors(
             # Find the link to attach the IMU to
             link_site = mjcf_root.find(f".//site[@name='{imu.site_name}']")
             if link_site is None:
-                raise ValueError(f"Site {imu.site_name} not found for IMU sensor")
+                options = [site.attrib["name"] for site in mjcf_root.findall(".//site")]
+                raise ValueError(f"Site {imu.site_name} not found for IMU sensor. Options: {options}")
 
             # Add the accelerometer
             acc_attrib = {
