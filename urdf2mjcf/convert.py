@@ -386,7 +386,6 @@ def convert_urdf_to_mjcf(
     copy_meshes: bool = False,
     metadata: ConversionMetadata | None = None,
     metadata_file: str | Path | None = None,
-    floating_base: bool = True,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
@@ -396,7 +395,6 @@ def convert_urdf_to_mjcf(
         copy_meshes: If True, mesh files will be copied.
         metadata: Optional conversion metadata.
         metadata_file: Optional path to metadata file.
-        floating_base: Whether to add a floating base to the MJCF model.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
@@ -803,7 +801,7 @@ def convert_urdf_to_mjcf(
     for mesh_name, filename in mesh_assets.items():
         ET.SubElement(asset_elem, "mesh", attrib={"name": mesh_name, "file": Path(filename).name})
 
-    # Copy mesh files if requested
+    # Copy mesh files if requested.
     if copy_meshes:
         urdf_dir: Path = urdf_path.parent.resolve()
         target_mesh_dir: Path = (mjcf_path.parent / "meshes").resolve()
@@ -818,9 +816,11 @@ def convert_urdf_to_mjcf(
     save_xml(mjcf_path, ET.ElementTree(mjcf_root))
 
     # Apply post-processing steps
-    if floating_base:
-        fix_base_joint(mjcf_path)
-    add_sensors(mjcf_path, root_site_name, imus=metadata.imus if metadata else None)
+    if metadata.floating_base:
+        fix_base_joint(mjcf_path, remove_base_inertial=metadata.remove_base_inertial)
+    if metadata.merge_fixed:
+        remove_fixed_joints(mjcf_path)
+    add_sensors(mjcf_path, root_site_name, metadata=metadata)
 
 
 def main() -> None:
@@ -862,6 +862,11 @@ def main() -> None:
         action="store_true",
         help="Do not add a floating base to the MJCF model.",
     )
+    parser.add_argument(
+        "--remove-base-inertial",
+        action="store_true",
+        help="Remove the base inertial element from the MJCF model.",
+    )
 
     args = parser.parse_args()
 
@@ -890,11 +895,10 @@ def main() -> None:
         mjcf_path=args.output,
         copy_meshes=args.copy_meshes,
         metadata=metadata,
+        merge_fixed=args.merge_fixed,
         floating_base=not args.no_floating_base,
+        remove_base_inertial=args.remove_base_inertial,
     )
-
-    if args.merge_fixed:
-        remove_fixed_joints(args.output)
 
 
 if __name__ == "__main__":

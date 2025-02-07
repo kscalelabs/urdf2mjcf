@@ -10,11 +10,15 @@ from urdf2mjcf.utils import save_xml
 logger = logging.getLogger(__name__)
 
 
-def fix_base_joint(mjcf_path: str | Path) -> None:
+def fix_base_joint(
+    mjcf_path: str | Path,
+    remove_base_inertial: bool = False,
+) -> None:
     """Fixes the base joint configuration.
 
     Args:
         mjcf_path: Path to the MJCF file
+        remove_base_inertial: If True, removes the base inertial element.
     """
     tree = ET.parse(mjcf_path)
     root = tree.getroot()
@@ -54,6 +58,11 @@ def fix_base_joint(mjcf_path: str | Path) -> None:
     else:
         logger.warning("Robot body does not have a joint; adding a freejoint")
         robot_body.insert(0, ET.Element("freejoint", attrib={"name": "floating_base"}))
+
+    if remove_base_inertial:
+        inertial = robot_body.find("inertial")
+        if inertial is not None:
+            robot_body.remove(inertial)
 
     # Save changes
     save_xml(mjcf_path, tree)
