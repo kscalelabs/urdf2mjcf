@@ -5,7 +5,7 @@
 import re
 from typing import List
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description: str = f.read()
@@ -37,7 +37,7 @@ setup(
     install_requires=requirements,
     tests_require=requirements_dev,
     extras_require={"dev": requirements_dev},
-    packages=["urdf2mjcf"],
+    packages=find_packages(),
     entry_points={
         "console_scripts": [
             "urdf2mjcf=urdf2mjcf.convert:main",
