@@ -5,7 +5,7 @@
 import re
 from typing import List
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description: str = f.read()
