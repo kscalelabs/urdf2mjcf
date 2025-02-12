@@ -39,7 +39,8 @@ def remove_redundant_materials(root: ET.Element) -> None:
 
         # Keep the first material and remove others
         kept_material = duplicate_materials[0]
-        kept_name = kept_material.get("name")
+        if (kept_name := kept_material.get("name")) is None:
+            continue
 
         for material in duplicate_materials[1:]:
             duplicate_name = material.get("name")
