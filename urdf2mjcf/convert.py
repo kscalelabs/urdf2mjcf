@@ -267,6 +267,48 @@ def add_default(root: ET.Element) -> None:
     root.insert(0, default)
 
 
+def add_contact(root: ET.Element, robot: ET.Element) -> None:
+    """Add a contact element to the MJCF root.
+
+    For each pair of adjacent links that each have collision elements, we need
+    to add an exclude tag to the contact element to make sure the links do not
+    collide with each other.
+
+    Args:
+        root: The MJCF root element.
+        robot: The URDF robot element.
+    """
+    links_with_collision: dict[str, ET.Element] = {}
+    for link in robot.findall("link"):
+        if link.find("collision") is not None and (name := link.attrib.get("name")) is not None:
+            links_with_collision[name] = link
+
+    contact: ET.Element | None = None
+    for joint in robot.findall("joint"):
+        parent_link = joint.find("parent")
+        child_link = joint.find("child")
+        if (
+            parent_link is None
+            or child_link is None
+            or (parent_name := parent_link.attrib.get("link")) is None
+            or (child_name := child_link.attrib.get("link")) is None
+        ):
+            continue
+
+        if parent_name in links_with_collision and child_name in links_with_collision:
+            if contact is None:
+                contact = ET.SubElement(root, "contact")
+
+            ET.SubElement(
+                contact,
+                "exclude",
+                attrib={
+                    "body1": parent_name,
+                    "body2": child_name,
+                },
+            )
+
+
 def add_option(root: ET.Element) -> None:
     """Add an option element to the MJCF root.
 
@@ -777,6 +819,8 @@ def convert_urdf_to_mjcf(
         asset_elem = ET.SubElement(mjcf_root, "asset")
     for mesh_name, filename in mesh_assets.items():
         ET.SubElement(asset_elem, "mesh", attrib={"name": mesh_name, "file": Path(filename).name})
+
+    add_contact(mjcf_root, robot)
 
     # Copy mesh files if requested.
     if copy_meshes:
