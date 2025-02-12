@@ -369,7 +369,7 @@ def convert_urdf_to_mjcf(
         metadata_file: Optional path to metadata file.
     """
     urdf_path = Path(urdf_path)
-    mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".xml")
+    mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".mjcf")
     if not urdf_path.exists():
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
