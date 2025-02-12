@@ -642,22 +642,22 @@ def convert_urdf_to_mjcf(
             name = f"{link_name}_collision"
             if len(collisions) > 1:
                 name = f"{name}_{idx}"
-            geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
+            collision_geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
 
             # Get material from collision element
-            geom_elem: ET.Element | None = collision.find("geometry")
-            if geom_elem is not None:
-                geom = handle_geom_element(geom_elem, "1 1 1")
-                geom_attrib["type"] = geom.type
+            collision_geom_elem: ET.Element | None = collision.find("geometry")
+            if collision_geom_elem is not None:
+                geom = handle_geom_element(collision_geom_elem, "1 1 1")
+                collision_geom_attrib["type"] = geom.type
                 if geom.type == "mesh":
                     if geom.mesh is not None:
-                        geom_attrib["mesh"] = geom.mesh
+                        collision_geom_attrib["mesh"] = geom.mesh
                 elif geom.size is not None:
-                    geom_attrib["size"] = geom.size
+                    collision_geom_attrib["size"] = geom.size
                 if geom.scale is not None:
-                    geom_attrib["scale"] = geom.scale
-            geom_attrib["class"] = "collision"
-            ET.SubElement(body, "geom", attrib=geom_attrib)
+                    collision_geom_attrib["scale"] = geom.scale
+            collision_geom_attrib["class"] = "collision"
+            ET.SubElement(body, "geom", attrib=collision_geom_attrib)
 
         # Process visual geometries.
         visuals = link.findall("visual")
@@ -673,32 +673,32 @@ def convert_urdf_to_mjcf(
             name = f"{link_name}_visual"
             if len(visuals) > 1:
                 name = f"{name}_{idx}"
-            geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
+            visual_geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
 
             # Get material from visual element
             material_elem = visual.find("material")
             if material_elem is not None:
                 material_name = material_elem.attrib.get("name")
                 if material_name in materials:
-                    geom_attrib["material"] = material_name
+                    visual_geom_attrib["material"] = material_name
                 else:
-                    geom_attrib["material"] = "default_material"
+                    visual_geom_attrib["material"] = "default_material"
             else:
-                geom_attrib["material"] = "default_material"
+                visual_geom_attrib["material"] = "default_material"
 
-            geom_elem = visual.find("geometry")
-            if geom_elem is not None:
-                geom = handle_geom_element(geom_elem, "1 1 1")
-                geom_attrib["type"] = geom.type
+            visual_geom_elem: ET.Element | None = visual.find("geometry")
+            if visual_geom_elem is not None:
+                geom = handle_geom_element(visual_geom_elem, "1 1 1")
+                visual_geom_attrib["type"] = geom.type
                 if geom.type == "mesh":
                     if geom.mesh is not None:
-                        geom_attrib["mesh"] = geom.mesh
+                        visual_geom_attrib["mesh"] = geom.mesh
                 elif geom.size is not None:
-                    geom_attrib["size"] = geom.size
+                    visual_geom_attrib["size"] = geom.size
                 if geom.scale is not None:
-                    geom_attrib["scale"] = geom.scale
-            geom_attrib["class"] = "visual"
-            ET.SubElement(body, "geom", attrib=geom_attrib)
+                    visual_geom_attrib["scale"] = geom.scale
+            visual_geom_attrib["class"] = "visual"
+            ET.SubElement(body, "geom", attrib=visual_geom_attrib)
 
         # Recurse into child links.
         if link_name in parent_map:
