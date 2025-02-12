@@ -1,6 +1,4 @@
 <robot name="simple_humanoid">
-  <link name="base_link" />
-
   <material name="WAIST_LINK1_APP">
     <color rgba="0.6 1.0 0.6 1" />
   </material>
@@ -619,12 +617,6 @@
 
 
   <!--  Joints following below -->
-  <joint name="waist" type="fixed">
-    <parent link="base_link" />
-    <child link="BODY" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-  </joint>
-
   <joint name="imu" type="fixed">
     <parent link="BODY" />
     <child link="IMU" />
