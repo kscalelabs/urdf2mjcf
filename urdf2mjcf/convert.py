@@ -15,9 +15,12 @@ from urdf2mjcf.model import ConversionMetadata, JointParamsMetadata
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.merge_fixed import remove_fixed_joints
+from urdf2mjcf.postprocess.remove_redundancies import remove_redundancies
 from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
+
+ROBOT_CLASS = "robot"
 
 
 @dataclass
@@ -189,8 +192,8 @@ def add_compiler(root: ET.Element) -> None:
     attrib = {
         "angle": "radian",
         "meshdir": "meshes",
-        "eulerseq": "zyx",
-        "autolimits": "true",
+        # "eulerseq": "zyx",
+        # "autolimits": "true",
     }
 
     element = ET.Element("compiler", attrib=attrib)
@@ -201,53 +204,100 @@ def add_compiler(root: ET.Element) -> None:
 
 
 def add_default(root: ET.Element) -> None:
-    """Add default settings for joints, geoms, motors, and equality constraints."""
+    """Add default settings with hierarchical structure for robot components."""
     default = ET.Element("default")
+
+    # Main robot class defaults
+    robot_default = ET.SubElement(default, "default", attrib={"class": ROBOT_CLASS})
+
+    # Joint defaults
     ET.SubElement(
-        default,
+        robot_default,
         "joint",
         attrib={
             "limited": "true",
             "damping": "0.01",
             "armature": "0.01",
             "frictionloss": "0.01",
+            "actuatorfrcrange": "-1000 1000",
         },
     )
+
+    # Visual geometry class
+    visual_default = ET.SubElement(
+        robot_default,
+        "default",
+        attrib={"class": "visual"},
+    )
     ET.SubElement(
-        default,
+        visual_default,
         "geom",
         attrib={
-            "condim": "4",
-            "contype": "1",
-            "conaffinity": "15",
-            "friction": "0.9 0.2 0.2",
-            "solref": "0.001 2",
+            "material": "visualgeom",
+            "contype": "0",
+            "conaffinity": "0",
+            "group": "2",
         },
     )
-    ET.SubElement(
-        default,
-        "motor",
-        attrib={"ctrllimited": "true"},
-    )
-    ET.SubElement(
-        default,
-        "equality",
-        attrib={"solref": "0.001 2"},
-    )
-    default_element = ET.SubElement(
-        default,
+
+    # Collision geometry class
+    collision_default = ET.SubElement(
+        robot_default,
         "default",
-        attrib={"class": "visualgeom"},
+        attrib={"class": "collision"},
     )
     ET.SubElement(
-        default_element,
+        collision_default,
         "geom",
-        attrib={"material": "visualgeom", "condim": "1", "contype": "0", "conaffinity": "0"},
+        attrib={
+            "condim": "6",
+            # "contype": "1",
+            "conaffinity": "15",
+            "friction": "0.8 0.02 0.01",
+            # "solref": "0.001 2",
+            "solimp": "0.015 1 0.036",
+            "group": "3",
+        },
     )
+
+    # Replace existing default element if present
     existing_element = root.find("default")
     if isinstance(existing_element, ET.Element):
         root.remove(existing_element)
     root.insert(0, default)
+
+
+def add_option(root: ET.Element) -> None:
+    """Add an option element to the MJCF root.
+
+    Args:
+        root: The MJCF root element.
+    """
+    ET.SubElement(
+        root,
+        "option",
+        attrib={
+            "integrator": "implicitfast",
+            "cone": "elliptic",
+            "impratio": "100",
+        },
+    )
+
+
+def add_visual(root: ET.Element) -> None:
+    """Add a visual element to the MJCF root.
+
+    Args:
+        root: The MJCF root element.
+    """
+    visual = ET.SubElement(root, "visual")
+    ET.SubElement(
+        visual,
+        "global",
+        attrib={
+            "ellipsoidinertia": "true",
+        },
+    )
 
 
 def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
@@ -260,30 +310,6 @@ def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
     asset = root.find("asset")
     if asset is None:
         asset = ET.SubElement(root, "asset")
-    ET.SubElement(
-        asset,
-        "texture",
-        attrib={
-            "name": "texplane",
-            "type": "2d",
-            "builtin": "checker",
-            "rgb1": ".0 .0 .0",
-            "rgb2": ".8 .8 .8",
-            "width": "100",
-            "height": "100",
-        },
-    )
-    ET.SubElement(
-        asset,
-        "material",
-        attrib={
-            "name": "matplane",
-            "reflectance": "0.",
-            "texture": "texplane",
-            "texrepeat": "1 1",
-            "texuniform": "true",
-        },
-    )
 
     # Add materials from URDF
     for name, rgba in materials.items():
@@ -304,60 +330,6 @@ def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
             "name": "default_material",
             "rgba": "0.7 0.7 0.7 1",
         },
-    )
-
-
-def add_worldbody_elements(root: ET.Element) -> None:
-    """Add the ground plane and lights to the worldbody element."""
-    worldbody = root.find("worldbody")
-    if worldbody is None:
-        worldbody = ET.SubElement(root, "worldbody")
-
-    # Add ground plane.
-    worldbody.insert(
-        0,
-        ET.Element(
-            "geom",
-            attrib={
-                "name": "ground",
-                "type": "plane",
-                "pos": "0 0 0",
-                "size": "10 10 0.001",
-                "quat": "1 0 0 0",
-                "material": "matplane",
-                "condim": "3",
-                "conaffinity": "15",
-            },
-        ),
-    )
-
-    # Add lights.
-    worldbody.insert(
-        0,
-        ET.Element(
-            "light",
-            attrib={
-                "directional": "true",
-                "diffuse": "0.6 0.6 0.6",
-                "specular": "0.2 0.2 0.2",
-                "pos": "0 0 4",
-                "dir": "0 0 -1",
-            },
-        ),
-    )
-    worldbody.insert(
-        0,
-        ET.Element(
-            "light",
-            attrib={
-                "directional": "true",
-                "diffuse": "0.4 0.4 0.4",
-                "specular": "0.1 0.1 0.1",
-                "pos": "0 0 5.0",
-                "dir": "0 0 -1",
-                "castshadow": "false",
-            },
-        ),
     )
 
 
@@ -450,13 +422,13 @@ def convert_urdf_to_mjcf(
 
     # Add compiler, assets, and default settings.
     add_compiler(mjcf_root)
+    add_option(mjcf_root)
+    add_visual(mjcf_root)
     add_assets(mjcf_root, materials)
     add_default(mjcf_root)
 
-    # Create or find the worldbody element.
-    worldbody: ET.Element | None = mjcf_root.find("worldbody")
-    if worldbody is None:
-        worldbody = ET.SubElement(mjcf_root, "worldbody")
+    # Creates the worldbody element.
+    worldbody = ET.SubElement(mjcf_root, "worldbody")
 
     # Build mappings for URDF links and joints.
     link_map: dict[str, ET.Element] = {link.attrib["name"]: link for link in robot.findall("link")}
@@ -679,7 +651,7 @@ def convert_urdf_to_mjcf(
                     geom_attrib["size"] = geom.size
                 if geom.scale is not None:
                     geom_attrib["scale"] = geom.scale
-            geom_attrib["rgba"] = "0 0 0 0"
+            geom_attrib["class"] = "collision"
             ET.SubElement(body, "geom", attrib=geom_attrib)
 
         # Process visual geometries.
@@ -721,6 +693,7 @@ def convert_urdf_to_mjcf(
                     geom_attrib["size"] = geom.size
                 if geom.scale is not None:
                     geom_attrib["scale"] = geom.scale
+            geom_attrib["class"] = "visual"
             ET.SubElement(body, "geom", attrib=geom_attrib)
 
         # Recurse into child links.
@@ -760,6 +733,7 @@ def convert_urdf_to_mjcf(
     body_pos = [float(x) for x in body_pos.split()]
     body_pos[2] += computed_offset
     robot_body.attrib["pos"] = " ".join(f"{x:.8f}" for x in body_pos)
+    robot_body.attrib["childclass"] = ROBOT_CLASS
 
     worldbody.append(robot_body)
 
@@ -789,10 +763,9 @@ def convert_urdf_to_mjcf(
         elif joint_params.lower is not None or joint_params.upper is not None:
             raise ValueError(f"Joint {joint_params.name} has a lower or upper limit but no ctrlrange")
 
-        ET.SubElement(actuator_elem, "position", attrib=attrib)
+        attrib["class"] = ROBOT_CLASS
 
-    # Add additional worldbody elements (ground, lights, etc.).
-    add_worldbody_elements(mjcf_root)
+        ET.SubElement(actuator_elem, "position", attrib=attrib)
 
     # Add mesh assets to the asset section before saving
     asset_elem: ET.Element | None = mjcf_root.find("asset")
@@ -820,6 +793,8 @@ def convert_urdf_to_mjcf(
         fix_base_joint(mjcf_path)
     if metadata.remove_fixed_joints:
         remove_fixed_joints(mjcf_path)
+    if metadata.remove_redundancies:
+        remove_redundancies(mjcf_path)
     add_sensors(mjcf_path, root_site_name, metadata=metadata)
 
 

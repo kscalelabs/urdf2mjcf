@@ -50,6 +50,7 @@ class ConversionMetadata(BaseModel):
     joint_params: JointParamsMetadata | None = None
     imus: list[ImuSensor] = []
     remove_fixed_joints: bool = False
+    remove_redundancies: bool = True
     floating_base: bool = True
 
     class Config:
