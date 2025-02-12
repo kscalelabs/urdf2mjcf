@@ -639,7 +639,12 @@ def convert_urdf_to_mjcf(
             else:
                 pos_geom = "0 0 0"
                 quat_geom = "1 0 0 0"
-            geom_attrib: dict[str, str] = {"name": f"{link_name}_collision_{idx}", "pos": pos_geom, "quat": quat_geom}
+            name = f"{link_name}_collision"
+            if len(collisions) > 1:
+                name = f"{name}_{idx}"
+            geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
+
+            # Get material from collision element
             geom_elem: ET.Element | None = collision.find("geometry")
             if geom_elem is not None:
                 geom = handle_geom_element(geom_elem, "1 1 1")
@@ -665,11 +670,10 @@ def convert_urdf_to_mjcf(
             else:
                 pos_geom = "0 0 0"
                 quat_geom = "1 0 0 0"
-            geom_attrib = {
-                "name": f"{link_name}_visual_{idx}" if len(visuals) > 1 else f"{link_name}_visual",
-                "pos": pos_geom,
-                "quat": quat_geom,
-            }
+            name = f"{link_name}_visual"
+            if len(visuals) > 1:
+                name = f"{name}_{idx}"
+            geom_attrib: dict[str, str] = {"name": name, "pos": pos_geom, "quat": quat_geom}
 
             # Get material from visual element
             material_elem = visual.find("material")

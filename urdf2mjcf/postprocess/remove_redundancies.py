@@ -105,47 +105,6 @@ def remove_redundant_geoms(root: ET.Element) -> None:
         )
 
 
-def remove_redundant_mesh_names(root: ET.Element) -> None:
-    """Removes redundant mesh names from the MJCF file.
-
-    Sometimes, the mesh name is the same as the file name without extension.
-    In these cases, we can remove the mesh name attribute since Mujoco will use
-    the file name by default.
-
-    Args:
-        root: The root element of the MJCF file.
-    """
-    # Find all meshes in the asset section
-    asset = root.find("asset")
-    if asset is None:
-        return
-
-    meshes = asset.findall("mesh")
-    if not meshes:
-        return
-
-    num_removed = 0
-    for mesh in meshes:
-        # Get the mesh name and file attributes
-        mesh_name = mesh.get("name")
-        file_path = mesh.get("file")
-
-        if mesh_name is None or file_path is None:
-            continue
-
-        # Get the file name without extension
-        file_stem = Path(file_path).stem
-
-        # If the mesh name matches the file name (case insensitive), remove it
-        if mesh_name.lower() == file_stem.lower():
-            logger.info("Removing redundant mesh name %s", mesh_name)
-            del mesh.attrib["name"]
-            num_removed += 1
-
-    if num_removed > 0:
-        logger.info("Removed %d redundant mesh names", num_removed)
-
-
 def remove_redundancies(mjcf_path: str | Path) -> None:
     """Remove redundancies from the MJCF file.
 
@@ -157,7 +116,6 @@ def remove_redundancies(mjcf_path: str | Path) -> None:
 
     remove_redundant_materials(root)
     remove_redundant_geoms(root)
-    remove_redundant_mesh_names(root)
 
     # Save the modified MJCF file
     save_xml(mjcf_path, tree)
