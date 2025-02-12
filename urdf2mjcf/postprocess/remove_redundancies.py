@@ -5,8 +5,6 @@ import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import numpy as np
-
 from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
@@ -28,7 +26,7 @@ def remove_redundant_materials(root: ET.Element) -> None:
         return
 
     # Group materials by their RGBA values
-    rgba_to_materials = {}
+    rgba_to_materials: dict[str, list[ET.Element]] = {}
     for material in materials:
         rgba = material.get("rgba")
         if rgba:
@@ -66,11 +64,11 @@ def is_close_to_identity(value: str, tolerance: float = 1e-6) -> bool:
         True if values are close to identity values
     """
     try:
-        nums = np.array([float(x) for x in value.split()])
+        nums = [float(x) for x in value.split()]
         if len(nums) == 3:  # pos
-            return np.allclose(nums, np.zeros(3), atol=tolerance)
+            return all(abs(x) <= tolerance for x in nums)
         elif len(nums) == 4:  # quat
-            return np.allclose(nums, np.array([1, 0, 0, 0]), atol=tolerance)
+            return abs(nums[0] - 1) <= tolerance and all(abs(x) <= tolerance for x in nums[1:])
         return False
     except (ValueError, TypeError):
         return False
