@@ -27,17 +27,12 @@ def remove_fixed_joints(mjcf_path: str | Path) -> None:
     if worldbody is None:
         return
 
-    bodies_to_merge = []
-
     # Find all bodies that don't have joints
+    bodies_to_merge: list[tuple[ET.Element, ET.Element]] = []
     for parent_body in worldbody.findall(".//body"):
-        if parent_body.find("freejoint") is not None:
-            continue
-
         for child_body in parent_body.findall("body"):
-            if child_body.find("joint") is not None:
+            if child_body.find("joint") is not None or child_body.find("freejoint") is not None:
                 continue
-
             bodies_to_merge.append((parent_body, child_body))
 
     for parent_body, child_body in bodies_to_merge:
