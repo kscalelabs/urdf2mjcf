@@ -11,7 +11,7 @@ from pathlib import Path
 
 import colorlogging
 
-from urdf2mjcf.model import ConversionMetadata, JointParamsMetadata
+from urdf2mjcf.model import ConversionMetadata, JointParam
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.merge_fixed import remove_fixed_joints
@@ -30,18 +30,12 @@ class ParsedJointParams:
     Attributes:
         name: Joint name.
         type: Joint type (hinge, slide, etc.).
-        stiffness: Joint stiffness (kp).
-        damping: Joint damping (kd).
         lower: Lower joint limit, if any.
         upper: Upper joint limit, if any.
-        max_torque: Maximum joint torque, if any.
     """
 
     name: str
     type: str
-    stiffness: float | None = None
-    damping: float | None = None
-    max_torque: float | None = None
     lower: float | None = None
     upper: float | None = None
 
@@ -203,25 +197,36 @@ def add_compiler(root: ET.Element) -> None:
     root.insert(0, element)
 
 
-def add_default(root: ET.Element) -> None:
+def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     """Add default settings with hierarchical structure for robot components."""
     default = ET.Element("default")
 
     # Main robot class defaults
     robot_default = ET.SubElement(default, "default", attrib={"class": ROBOT_CLASS})
 
-    # Joint defaults
-    ET.SubElement(
-        robot_default,
-        "joint",
-        attrib={
-            "limited": "true",
-            "damping": "0.01",
-            "armature": "0.01",
-            "frictionloss": "0.01",
-            "actuatorfrcrange": "-1000 1000",
-        },
-    )
+    # Inherit position.
+    ET.SubElement(robot_default, "position", attrib={"inheritrange": "1"})
+
+    for joint_param in metadata.joint_params:
+        sub_default = ET.SubElement(robot_default, "default", attrib={"class": joint_param.name})
+
+        # Joint attributes.
+        attrib: dict[str, str] = {}
+        if joint_param.armature is not None:
+            attrib["armature"] = str(joint_param.armature)
+        if joint_param.frictionloss is not None:
+            attrib["frictionloss"] = str(joint_param.frictionloss)
+        if joint_param.actuatorfrc is not None:
+            attrib["actuatorfrcrange"] = f"-{joint_param.actuatorfrc} {joint_param.actuatorfrc}"
+        ET.SubElement(sub_default, "joint", attrib=attrib)
+
+        # Position attributes.
+        attrib: dict[str, str] = {}
+        if joint_param.kp is not None:
+            attrib["kp"] = str(joint_param.kp)
+        if joint_param.kd is not None:
+            attrib["kv"] = str(joint_param.kd)
+        ET.SubElement(sub_default, "position", attrib=attrib)
 
     # Visual geometry class
     visual_default = ET.SubElement(
@@ -251,11 +256,7 @@ def add_default(root: ET.Element) -> None:
         "geom",
         attrib={
             "condim": "6",
-            # "contype": "1",
-            # "conaffinity": "15",
             "friction": "0.8 0.02 0.01",
-            # "solref": "0.001 2",
-            # "solimp": "0.015 1 0.036",
             "group": "3",
         },
     )
@@ -315,15 +316,15 @@ def add_option(root: ET.Element) -> None:
     Args:
         root: The MJCF root element.
     """
-    ET.SubElement(
-        root,
-        "option",
-        attrib={
-            "integrator": "implicitfast",
-            "cone": "elliptic",
-            "impratio": "100",
-        },
-    )
+    # ET.SubElement(
+    #     root,
+    #     "option",
+    #     attrib={
+    #         "integrator": "implicitfast",
+    #         "cone": "elliptic",
+    #         "impratio": "100",
+    #     },
+    # )
 
 
 def add_visual(root: ET.Element) -> None:
@@ -332,14 +333,14 @@ def add_visual(root: ET.Element) -> None:
     Args:
         root: The MJCF root element.
     """
-    visual = ET.SubElement(root, "visual")
-    ET.SubElement(
-        visual,
-        "global",
-        attrib={
-            "ellipsoidinertia": "true",
-        },
-    )
+    # visual = ET.SubElement(root, "visual")
+    # ET.SubElement(
+    #     visual,
+    #     "global",
+    #     attrib={
+    #         "ellipsoidinertia": "true",
+    #     },
+    # )
 
 
 def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
@@ -424,7 +425,7 @@ def convert_urdf_to_mjcf(
     if metadata is None:
         metadata = ConversionMetadata()
 
-    joint_params_metadata = metadata.joint_params or JointParamsMetadata()
+    joint_params: list[JointParam] = metadata.joint_params or []
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
@@ -467,7 +468,7 @@ def convert_urdf_to_mjcf(
     add_option(mjcf_root)
     add_visual(mjcf_root)
     add_assets(mjcf_root, materials)
-    add_default(mjcf_root)
+    add_default(mjcf_root, metadata)
 
     # Creates the worldbody element.
     worldbody = ET.SubElement(mjcf_root, "worldbody")
@@ -597,48 +598,36 @@ def convert_urdf_to_mjcf(
                 else:
                     raise ValueError(f"Unsupported joint type: {jtype}")
 
+                for joint_param in metadata.joint_params:
+                    if any(j_name.endswith(suffix) for suffix in joint_param.suffixes):
+                        j_attrib["class"] = joint_param.name
+                        break
+                else:
+                    raise ValueError(f"Joint {j_name} not found in metadata")
+
                 limit = joint.find("limit")
                 if limit is not None:
                     lower_val = limit.attrib.get("lower")
                     upper_val = limit.attrib.get("upper")
-                    effort_val = limit.attrib.get("effort")
                     if lower_val is not None and upper_val is not None:
                         j_attrib["range"] = f"{lower_val} {upper_val}"
                         lower_num: float | None = float(lower_val)
                         upper_num: float | None = float(upper_val)
                     else:
                         lower_num = upper_num = None
-                    max_torque: float | None = float(effort_val) if effort_val is not None else None
                 else:
-                    lower_num = upper_num = max_torque = None
+                    lower_num = upper_num = None
                 axis_elem = joint.find("axis")
                 if axis_elem is not None:
                     j_attrib["axis"] = axis_elem.attrib.get("xyz", "0 0 1")
                 ET.SubElement(body, "joint", attrib=j_attrib)
 
-                # Use PD gains from the joint parameters metadata.
-                for suffix, param in joint_params_metadata.suffix_to_pd_params.items():
-                    if j_name.endswith(suffix):
-                        stiffness_val = param.kp
-                        damping_val = param.kd
-                        break
-                else:
-                    if (default_values := joint_params_metadata.default) is not None:
-                        stiffness_val = default_values.kp
-                        damping_val = default_values.kd
-                    else:
-                        stiffness_val = None
-                        damping_val = None
-
                 actuator_joints.append(
                     ParsedJointParams(
                         name=j_name,
                         type=j_attrib["type"],
-                        stiffness=stiffness_val,
-                        damping=damping_val,
                         lower=lower_num,
                         upper=upper_num,
-                        max_torque=max_torque,
                     )
                 )
 
@@ -785,31 +774,21 @@ def convert_urdf_to_mjcf(
 
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
-    for joint_params in actuator_joints:
+    for actuator_joint in actuator_joints:
         attrib: dict[str, str] = {
-            "name": f"{joint_params.name}_ctrl",
-            "joint": joint_params.name,
+            "name": f"{actuator_joint.name}_ctrl",
+            "joint": actuator_joint.name,
         }
 
-        # Adds the joint PD parameters.
-        if joint_params.stiffness is not None:
-            attrib["kp"] = f"{joint_params.stiffness:.8f}"
-        if joint_params.damping is not None:
-            attrib["kv"] = f"{joint_params.damping:.8f}"
+        # Gets the joint name by checking the suffixes.
+        for joint_param in metadata.joint_params:
+            if any(actuator_joint.name.endswith(suffix) for suffix in joint_param.suffixes):
+                joint_class_name = joint_param.name
+                break
+        else:
+            raise ValueError(f"Joint {actuator_joint.name} has no matching link")
 
-        # Adds the joint torque limit.
-        if joint_params.max_torque is not None:
-            attrib["forcerange"] = f"-{joint_params.max_torque:.8f} {joint_params.max_torque:.8f}"
-            attrib["forcelimited"] = "true"
-
-        # Adds the joint limits.
-        if joint_params.lower is not None and joint_params.upper is not None:
-            attrib["ctrlrange"] = f"{joint_params.lower} {joint_params.upper}"
-            attrib["ctrllimited"] = "true"
-        elif joint_params.lower is not None or joint_params.upper is not None:
-            raise ValueError(f"Joint {joint_params.name} has a lower or upper limit but no ctrlrange")
-
-        attrib["class"] = ROBOT_CLASS
+        attrib["class"] = joint_class_name
 
         ET.SubElement(actuator_elem, "position", attrib=attrib)
 

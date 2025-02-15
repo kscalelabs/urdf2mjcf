@@ -4,16 +4,13 @@ from pydantic import BaseModel
 
 
 class JointParam(BaseModel):
+    name: str
+    suffixes: list[str]
+    armature: float | None = None
+    frictionloss: float | None = None
+    actuatorfrc: float | None = None
     kp: float | None = None
     kd: float | None = None
-
-    class Config:
-        extra = "forbid"
-
-
-class JointParamsMetadata(BaseModel):
-    suffix_to_pd_params: dict[str, JointParam] = {}
-    default: JointParam | None = None
 
     class Config:
         extra = "forbid"
@@ -47,7 +44,7 @@ class ConversionMetadata(BaseModel):
         floating_base: If True, add a floating base to the MJCF model
     """
 
-    joint_params: JointParamsMetadata | None = None
+    joint_params: list[JointParam] | None = None
     imus: list[ImuSensor] = []
     remove_fixed_joints: bool = False
     remove_redundancies: bool = True
