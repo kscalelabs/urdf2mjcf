@@ -199,6 +199,8 @@ def add_compiler(root: ET.Element) -> None:
 
 def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     """Add default settings with hierarchical structure for robot components."""
+    joint_params: list[JointParam] = metadata.joint_params or []
+
     default = ET.Element("default")
 
     # Main robot class defaults
@@ -207,7 +209,7 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     # Inherit position.
     ET.SubElement(robot_default, "position", attrib={"inheritrange": "1"})
 
-    for joint_param in metadata.joint_params:
+    for joint_param in joint_params:
         sub_default = ET.SubElement(robot_default, "default", attrib={"class": joint_param.name})
 
         # Joint attributes.
@@ -598,7 +600,7 @@ def convert_urdf_to_mjcf(
                 else:
                     raise ValueError(f"Unsupported joint type: {jtype}")
 
-                for joint_param in metadata.joint_params:
+                for joint_param in joint_params:
                     if any(j_name.endswith(suffix) for suffix in joint_param.suffixes):
                         j_attrib["class"] = joint_param.name
                         break
@@ -781,7 +783,7 @@ def convert_urdf_to_mjcf(
         }
 
         # Gets the joint name by checking the suffixes.
-        for joint_param in metadata.joint_params:
+        for joint_param in joint_params:
             if any(actuator_joint.name.endswith(suffix) for suffix in joint_param.suffixes):
                 joint_class_name = joint_param.name
                 break
