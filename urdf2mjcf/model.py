@@ -33,6 +33,23 @@ class ImuSensor(BaseModel):
     mag_noise: float | None = None
 
 
+class CameraSensor(BaseModel):
+    """Configuration for a camera sensor.
+
+    Attributes:
+        site_name: Name of the site to attach the camera to
+        pos: Position relative to site frame, in the form [x, y, z]
+        quat: Quaternion relative to site frame, in the form [w, x, y, z]
+        fovy: Field of view in degrees
+    """
+
+    name: str
+    mode: str
+    pos: list[float] = [0.0, 0.0, 0.0]
+    quat: list[float] = [1.0, 0.0, 0.0, 0.0]
+    fovy: float = 45.0
+
+
 class ConversionMetadata(BaseModel):
     """Configuration for URDF to MJCF conversion.
 
@@ -46,6 +63,15 @@ class ConversionMetadata(BaseModel):
 
     joint_params: list[JointParam] | None = None
     imus: list[ImuSensor] = []
+    cameras: list[CameraSensor] = [
+        CameraSensor(
+            name="tracking_camera",
+            mode="track",
+            pos=(0, -2.0, 1.0),
+            quat=(0.7071, 0.3827, 0, 0),
+            fovy=90,
+        ),
+    ]
     remove_fixed_joints: bool = False
     remove_redundancies: bool = True
     floating_base: bool = True

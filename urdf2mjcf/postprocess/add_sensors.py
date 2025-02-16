@@ -112,6 +112,24 @@ def add_sensors(
     else:
         add_base_sensors(root_site_name)
 
+    # Find the first <body> element to attach the default cameras instead of the root element.
+    first_body = mjcf_root.find(".//body")
+    if first_body is None:
+        raise ValueError("No <body> element found in the MJCF model to attach cameras.")
+
+    for cam in metadata.cameras:
+        ET.SubElement(
+            first_body,
+            "camera",
+            attrib={
+                "name": cam.name,
+                "mode": cam.mode,
+                "pos": " ".join(str(x) for x in cam.pos),
+                "quat": " ".join(str(x) for x in cam.quat),
+                "fovy": str(cam.fovy),
+            },
+        )
+
     # Save changes
     save_xml(mjcf_path, tree)
 
