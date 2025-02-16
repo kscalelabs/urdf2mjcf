@@ -3,7 +3,7 @@
     {
       "name": "motor",
       "kp": 10.0,
-      "kd": 1.0,
+      "dampratio": 1.0,
       "armature": 0.001,
       "frictionloss": 0.1,
       "actuatorfrc": 10.0,
