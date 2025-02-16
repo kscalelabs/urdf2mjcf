@@ -67,8 +67,8 @@ class ConversionMetadata(BaseModel):
         CameraSensor(
             name="tracking_camera",
             mode="track",
-            pos=(0, -2.0, 1.0),
-            quat=(0.7071, 0.3827, 0, 0),
+            pos=[0, -2.0, 1.0],
+            quat=[0.7071, 0.3827, 0, 0],
             fovy=90,
         ),
     ]
