@@ -3,6 +3,11 @@
 from pydantic import BaseModel
 
 
+class CollisionParams(BaseModel):
+    friction: list[float] = [0.8, 0.02, 0.01]
+    condim: int = 6
+
+
 class JointParam(BaseModel):
     name: str
     suffixes: list[str]
@@ -10,21 +15,13 @@ class JointParam(BaseModel):
     frictionloss: float | None = None
     actuatorfrc: float | None = None
     kp: float | None = None
-    kd: float | None = None
+    dampratio: float | None = 1.0
 
     class Config:
         extra = "forbid"
 
 
 class ImuSensor(BaseModel):
-    """Configuration for an IMU sensor.
-
-    Attributes:
-        site_name: Name of the site to attach the IMU to
-        pos: Position relative to site frame, in the form [x, y, z]
-        quat: Quaternion relative to site frame, in the form [w, x, y, z]
-    """
-
     site_name: str
     pos: list[float] = [0.0, 0.0, 0.0]
     quat: list[float] = [1.0, 0.0, 0.0, 0.0]
@@ -34,15 +31,6 @@ class ImuSensor(BaseModel):
 
 
 class CameraSensor(BaseModel):
-    """Configuration for a camera sensor.
-
-    Attributes:
-        site_name: Name of the site to attach the camera to
-        pos: Position relative to site frame, in the form [x, y, z]
-        quat: Quaternion relative to site frame, in the form [w, x, y, z]
-        fovy: Field of view in degrees
-    """
-
     name: str
     mode: str
     pos: list[float] = [0.0, 0.0, 0.0]
@@ -51,16 +39,7 @@ class CameraSensor(BaseModel):
 
 
 class ConversionMetadata(BaseModel):
-    """Configuration for URDF to MJCF conversion.
-
-    Attributes:
-        joint_params: Optional PD gains metadata for joints
-        imus: Optional list of IMU sensor configurations
-        remove_fixed_joints: If True, convert fixed child bodies into sites on
-            their parent bodies
-        floating_base: If True, add a floating base to the MJCF model
-    """
-
+    collision_params: CollisionParams = CollisionParams()
     joint_params: list[JointParam] | None = None
     imus: list[ImuSensor] = []
     cameras: list[CameraSensor] = [

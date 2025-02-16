@@ -222,11 +222,11 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
         ET.SubElement(sub_default, "joint", attrib=attrib)
 
         # Position attributes.
-        attrib: dict[str, str] = {}
+        attrib = {}
         if joint_param.kp is not None:
             attrib["kp"] = str(joint_param.kp)
-        if joint_param.kd is not None:
-            attrib["kv"] = str(joint_param.kd)
+        if joint_param.dampratio is not None:
+            attrib["dampratio"] = str(joint_param.dampratio)
         if joint_param.actuatorfrc is not None:
             attrib["forcelimited"] = "true"
             attrib["forcerange"] = f"-{joint_param.actuatorfrc} {joint_param.actuatorfrc}"
@@ -259,8 +259,8 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
         collision_default,
         "geom",
         attrib={
-            "condim": "6",
-            "friction": "0.8 0.02 0.01",
+            "condim": str(metadata.collision_params.condim),
+            "friction": " ".join(str(f) for f in metadata.collision_params.friction),
             "group": "3",
         },
     )
@@ -779,10 +779,7 @@ def convert_urdf_to_mjcf(
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
     for actuator_joint in actuator_joints:
-        attrib: dict[str, str] = {
-            "name": f"{actuator_joint.name}_ctrl",
-            "joint": actuator_joint.name,
-        }
+        attrib: dict[str, str] = {"joint": actuator_joint.name}
 
         # Gets the joint name by checking the suffixes.
         for joint_param in joint_params:
@@ -794,7 +791,7 @@ def convert_urdf_to_mjcf(
 
         attrib["class"] = joint_class_name
 
-        ET.SubElement(actuator_elem, "position", attrib=attrib)
+        ET.SubElement(actuator_elem, "position", attrib={"name": f"{actuator_joint.name}_pos", **attrib})
 
     # Add mesh assets to the asset section before saving
     asset_elem: ET.Element | None = mjcf_root.find("asset")
