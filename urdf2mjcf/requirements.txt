@@ -1,4 +1,6 @@
 # requirements.txt
 
-pydantic
 colorlogging
+numpy
+pydantic
+trimesh
