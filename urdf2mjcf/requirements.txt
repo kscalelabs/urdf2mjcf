@@ -1,6 +1,7 @@
 # requirements.txt
 
 colorlogging
+mujoco
 numpy
 pydantic
 trimesh
