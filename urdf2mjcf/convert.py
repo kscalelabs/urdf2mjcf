@@ -14,6 +14,7 @@ import colorlogging
 from urdf2mjcf.model import ConversionMetadata, JointParam
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
+from urdf2mjcf.postprocess.make_feet_spheres import convert_feet_to_spheres
 from urdf2mjcf.postprocess.remove_redundancies import remove_redundancies
 from urdf2mjcf.utils import save_xml
 
@@ -812,6 +813,8 @@ def convert_urdf_to_mjcf(
         fix_base_joint(mjcf_path)
     if metadata.remove_redundancies:
         remove_redundancies(mjcf_path)
+    if (feet_spheres := metadata.feet_spheres) is not None:
+        convert_feet_to_spheres(mjcf_path, feet_spheres.foot_links, feet_spheres.sphere_radius)
     add_sensors(mjcf_path, root_link_name, metadata=metadata)
 
 

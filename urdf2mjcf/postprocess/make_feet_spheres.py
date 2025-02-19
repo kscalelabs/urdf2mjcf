@@ -1,0 +1,183 @@
+"""Converts the feet of an MJCF model into spheres.
+
+For each specified foot link (which is assumed to contain a mesh geom),
+this script loads the MJCF both with XML (for modification) and with Mujoco
+(for computing the correct transformation of the mesh geometry). For each
+foot link, it loads the mesh file, applies the transform computed by Mujoco
+(i.e. the combined effect of any joint, body, and geom transformations),
+computes the axis-aligned bounding box in world coordinates, finds the bottom
+four corners of that bounding box (with the provided sphere radius), converts
+these points into the body-local coordinates, creates sphere geoms at each
+location, and finally removes the original mesh geom.
+"""
+
+import argparse
+import logging
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+# New import for Mujoco
+import mujoco
+import numpy as np
+import trimesh
+from scipy.spatial.transform import Rotation as R
+
+from urdf2mjcf.utils import save_xml
+
+logger = logging.getLogger(__name__)
+
+
+def convert_feet_to_spheres(
+    mjcf_path: str | Path,
+    foot_links: list[str],
+    sphere_radius: float,
+) -> None:
+    """Converts the feet of an MJCF model into spheres using Mujoco for proper transforms.
+
+    For each specified foot link, this function loads the MJCF file both as an XML tree
+    (for later writing) and as a Mujoco model to obtain the correct (world) transformation
+    for the mesh geom. It then loads the mesh file, transforms its vertices using Mujoco's
+    computed geom transform, computes its axis-aligned bounding box in world coordinates,
+    extracts the bottom four corners (with z-coordinate at the minimum), converts these
+    positions into the body-local frame, creates sphere geoms at those locations (with the
+    provided sphere radius), and finally removes the original mesh geom.
+
+    Args:
+        mjcf_path: Path to the MJCF file.
+        foot_links: List of link (body) names to process.
+        sphere_radius: The sphere radius (in meters) to use.
+    """
+    mjcf_path = Path(mjcf_path)
+    tree = ET.parse(mjcf_path)
+    root = tree.getroot()
+
+    # Get all the meshes from the <asset> element.
+    asset = root.find("asset")
+    if asset is None:
+        raise ValueError("No <asset> element found in the MJCF file.")
+    meshes = asset.findall("mesh")
+    mesh_name_to_path = {
+        mesh.attrib.get("name", mesh.attrib.get("file", "MISSING")): mesh.attrib["file"] for mesh in meshes
+    }
+
+    # Load the MJCF model with Mujoco to get the proper transformations.
+    # (This will account for any joint or body-level rotations.)
+    try:
+        model_mujoco = mujoco.MjModel.from_xml_path(str(mjcf_path))
+        data = mujoco.MjData(model_mujoco)
+    except Exception as e:
+        logger.error("Failed to load MJCF in Mujoco: %s", e)
+        raise
+
+    # Run one step.
+    mujoco.mj_step(model_mujoco, data)
+
+    # Iterate over all <body> elements and process those in foot_links.
+    for body_elem in root.iter("body"):
+        body_name = body_elem.attrib.get("name", "")
+        if body_name not in foot_links:
+            continue
+
+        # Find the mesh geom in the body (assumed type "mesh").
+        mesh_geom = None
+        for geom in list(body_elem.findall("geom")):
+            if geom.attrib.get("type", "").lower() == "mesh":
+                mesh_geom = geom
+                break
+
+        if mesh_geom is None:
+            logger.warning("No mesh geom found in link %s; skipping.", body_name)
+            continue
+
+        mesh_name = mesh_geom.attrib.get("mesh")
+        if not mesh_name:
+            logger.warning("Mesh geom in link %s does not specify a mesh file; skipping.", body_name)
+            continue
+
+        if mesh_name not in mesh_name_to_path:
+            logger.warning("Mesh name %s not found in <asset> element; skipping.", mesh_name)
+            continue
+        mesh_file = mesh_name_to_path[mesh_name]
+
+        # Load the mesh using trimesh.
+        mesh_path = (mjcf_path.parent / mesh_file).resolve()
+        try:
+            mesh = trimesh.load(mesh_path)
+        except Exception as e:
+            logger.error("Failed to load mesh from %s for link %s: %s", mesh_path, body_name, e)
+            continue
+
+        if not isinstance(mesh, trimesh.Trimesh):
+            logger.warning("Loaded mesh from %s is not a Trimesh for link %s; skipping.", mesh_path, body_name)
+            continue
+
+        geom = data.geom(f"{body_name}_collision")
+        geom_xpos = geom.xpos
+        geom_xmat = geom.xmat.reshape(3, 3)
+
+        # Transform the mesh vertices to world coordinates.
+        vertices = mesh.vertices  # shape (n,3)
+        world_vertices = geom_xpos + (geom_xmat @ vertices.T).T
+
+        # Convert the world vertices to the body-local coordinate system.
+        # This ensures that the "bottom" of the mesh corresponds to the minimal z-value in body coordinates.
+        body = data.body(body_name)
+        body_xpos = body.xpos
+        body_xmat = body.xmat.reshape(3, 3)
+        # Since the body rotation matrix is orthogonal, its inverse is its transpose.
+        body_R_inv = body_xmat.T
+        local_vertices = (body_R_inv @ (world_vertices - body_xpos).T).T
+
+        # Compute the axis-aligned bounding box in the body-local coordinate system.
+        min_local = local_vertices.min(axis=0)
+        max_local = local_vertices.max(axis=0)
+
+        # The bottom face in body coordinates corresponds to the plane with z = min_local[2].
+        bottom_z = min_local[2]
+        bottom_corners_local = [
+            np.array([min_local[0], min_local[1], bottom_z]),
+            np.array([min_local[0], max_local[1], bottom_z]),
+            np.array([max_local[0], min_local[1], bottom_z]),
+            np.array([max_local[0], max_local[1], bottom_z]),
+        ]
+
+        # Create a new sphere geom at each transformed corner.
+        for idx, corner in enumerate(bottom_corners_local, start=1):
+            sphere_geom = ET.Element("geom")
+            sphere_geom.attrib["name"] = f"{body_name}_foot_sphere_{idx}"
+            sphere_geom.attrib["type"] = "sphere"
+            # Position is expressed relative to the body.
+            sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in corner)
+            # For a sphere geom, "size" typically specifies the radius.
+            sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
+            body_elem.append(sphere_geom)
+            logger.info(
+                "Added sphere %s at %s in link %s",
+                sphere_geom.attrib["name"],
+                sphere_geom.attrib["pos"],
+                body_name,
+            )
+
+        # Remove the original mesh geom from the body.
+        body_elem.remove(mesh_geom)
+        logger.info("Removed original mesh geom from link %s", body_name)
+
+    # Save the modified MJCF file.
+    save_xml(mjcf_path, tree)
+    logger.info("Saved modified MJCF file with feet converted to spheres at %s", mjcf_path)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Convert MJCF foot mesh geometries into spheres at the bottom corners of their bounding boxes."
+    )
+    parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
+    parser.add_argument("--radius", type=float, required=True, help="Radius of the spheres to create.")
+    parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot spheres.")
+    args = parser.parse_args()
+
+    convert_feet_to_spheres(args.mjcf_path, args.links, args.radius)
+
+
+if __name__ == "__main__":
+    main()

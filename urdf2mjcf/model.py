@@ -36,6 +36,11 @@ class CameraSensor(BaseModel):
     fovy: float = 45.0
 
 
+class FeetSpheresParams(BaseModel):
+    foot_links: list[str]
+    sphere_radius: float
+
+
 class ConversionMetadata(BaseModel):
     collision_params: CollisionParams = CollisionParams()
     joint_params: list[JointParam] | None = None
@@ -49,6 +54,7 @@ class ConversionMetadata(BaseModel):
             fovy=90,
         ),
     ]
+    feet_spheres: FeetSpheresParams | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
 
