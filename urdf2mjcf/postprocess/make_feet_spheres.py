@@ -20,7 +20,6 @@ from pathlib import Path
 import mujoco
 import numpy as np
 import trimesh
-from scipy.spatial.transform import Rotation as R
 
 from urdf2mjcf.utils import save_xml
 
@@ -31,6 +30,7 @@ def convert_feet_to_spheres(
     mjcf_path: str | Path,
     foot_links: list[str],
     sphere_radius: float,
+    class_name: str = "collision",
 ) -> None:
     """Converts the feet of an MJCF model into spheres using Mujoco for proper transforms.
 
@@ -46,6 +46,7 @@ def convert_feet_to_spheres(
         mjcf_path: Path to the MJCF file.
         foot_links: List of link (body) names to process.
         sphere_radius: The sphere radius (in meters) to use.
+        class_name: The class name to use for the sphere geoms.
     """
     mjcf_path = Path(mjcf_path)
     tree = ET.parse(mjcf_path)
@@ -78,16 +79,21 @@ def convert_feet_to_spheres(
         if body_name not in foot_links:
             continue
 
-        # Find the mesh geom in the body (assumed type "mesh").
-        mesh_geom = None
-        for geom in list(body_elem.findall("geom")):
-            if geom.attrib.get("type", "").lower() == "mesh":
-                mesh_geom = geom
-                break
+        # Find the mesh geom in the body, disambiguating by class if necessary.
+        mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
+        if len(mesh_geoms) == 0:
+            raise ValueError(f"No mesh geom found in link {body_name}")
+        if len(mesh_geoms) > 1:
+            logger.warning("Got multiple mesh geoms in link %s; attempting to use class %s", body_name, class_name)
+            mesh_geoms = [geom for geom in mesh_geoms if geom.attrib.get("class", "").lower() == class_name]
 
-        if mesh_geom is None:
-            logger.warning("No mesh geom found in link %s; skipping.", body_name)
-            continue
+            if len(mesh_geoms) == 0:
+                raise ValueError(f"No mesh geom with class {class_name} found in link {body_name}")
+            if len(mesh_geoms) > 1:
+                raise ValueError(f"Got multiple mesh geoms with class {class_name} in link {body_name}")
+
+        mesh_geom = mesh_geoms[0]
+        mesh_geom_name = mesh_geom.attrib.get("name")
 
         mesh_name = mesh_geom.attrib.get("mesh")
         if not mesh_name:
@@ -111,56 +117,62 @@ def convert_feet_to_spheres(
             logger.warning("Loaded mesh from %s is not a Trimesh for link %s; skipping.", mesh_path, body_name)
             continue
 
-        geom = data.geom(f"{body_name}_collision")
-        geom_xpos = geom.xpos
-        geom_xmat = geom.xmat.reshape(3, 3)
-
         # Transform the mesh vertices to world coordinates.
         vertices = mesh.vertices  # shape (n,3)
-        world_vertices = geom_xpos + (geom_xmat @ vertices.T).T
 
         # Convert the world vertices to the body-local coordinate system.
         # This ensures that the "bottom" of the mesh corresponds to the minimal z-value in body coordinates.
         body = data.body(body_name)
-        body_xpos = body.xpos
-        body_xmat = body.xmat.reshape(3, 3)
+
         # Since the body rotation matrix is orthogonal, its inverse is its transpose.
-        body_R_inv = body_xmat.T
-        local_vertices = (body_R_inv @ (world_vertices - body_xpos).T).T
+        body_r = body.xmat.reshape(3, 3)
+        body_r_inv = body_r.T
+        local_vertices = (body_r_inv @ vertices.T).T
 
         # Compute the axis-aligned bounding box in the body-local coordinate system.
         min_local = local_vertices.min(axis=0)
         max_local = local_vertices.max(axis=0)
 
         # The bottom face in body coordinates corresponds to the plane with z = min_local[2].
-        bottom_z = min_local[2]
-        bottom_corners_local = [
-            np.array([min_local[0], min_local[1], bottom_z]),
-            np.array([min_local[0], max_local[1], bottom_z]),
-            np.array([max_local[0], min_local[1], bottom_z]),
-            np.array([max_local[0], max_local[1], bottom_z]),
-        ]
+        bottom_z = min_local[2] + sphere_radius
+        bottom_corners_local = np.array(
+            [
+                np.array([min_local[0] + sphere_radius, min_local[1] + sphere_radius, bottom_z]),
+                np.array([min_local[0] + sphere_radius, max_local[1] - sphere_radius, bottom_z]),
+                np.array([max_local[0] - sphere_radius, min_local[1] + sphere_radius, bottom_z]),
+                np.array([max_local[0] - sphere_radius, max_local[1] - sphere_radius, bottom_z]),
+                np.array([(min_local[0] + max_local[0]) / 2, (min_local[1] + max_local[1]) / 2, bottom_z]),
+            ]
+        )
+
+        # Transforms back to the STL reference frame.
+        bottom_corners_geom = (body_r @ bottom_corners_local.T).T
 
         # Create a new sphere geom at each transformed corner.
-        for idx, corner in enumerate(bottom_corners_local, start=1):
+        for idx, corner in enumerate(bottom_corners_geom, start=1):
+            # Now directly use corner_world as the correct position for the sphere
+            # Make sure we're getting the correct world position with no further offsets.
             sphere_geom = ET.Element("geom")
             sphere_geom.attrib["name"] = f"{body_name}_foot_sphere_{idx}"
             sphere_geom.attrib["type"] = "sphere"
-            # Position is expressed relative to the body.
             sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in corner)
-            # For a sphere geom, "size" typically specifies the radius.
             sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
+
+            # Copies over any other attributes from the original mesh geom.
+            for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                if key in mesh_geom.attrib:
+                    sphere_geom.attrib[key] = mesh_geom.attrib[key]
+
+            # TODO: Change for testing.
+            sphere_geom.attrib.pop("class", None)
+            sphere_geom.attrib["material"] = "floating_base_link_material"
+
+            # Add the sphere to the body
             body_elem.append(sphere_geom)
-            logger.info(
-                "Added sphere %s at %s in link %s",
-                sphere_geom.attrib["name"],
-                sphere_geom.attrib["pos"],
-                body_name,
-            )
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
-        logger.info("Removed original mesh geom from link %s", body_name)
+        # logger.info("Removed original mesh geom from link %s", body_name)
 
     # Save the modified MJCF file.
     save_xml(mjcf_path, tree)
