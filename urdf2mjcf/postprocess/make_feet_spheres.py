@@ -16,7 +16,6 @@ import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# New import for Mujoco
 import mujoco
 import numpy as np
 import trimesh
@@ -32,15 +31,16 @@ def convert_feet_to_spheres(
     sphere_radius: float,
     class_name: str = "collision",
 ) -> None:
-    """Converts the feet of an MJCF model into spheres using Mujoco for proper transforms.
+    """Converts the feet of an MJCF model into spheres using Mujoco.
 
-    For each specified foot link, this function loads the MJCF file both as an XML tree
-    (for later writing) and as a Mujoco model to obtain the correct (world) transformation
-    for the mesh geom. It then loads the mesh file, transforms its vertices using Mujoco's
-    computed geom transform, computes its axis-aligned bounding box in world coordinates,
-    extracts the bottom four corners (with z-coordinate at the minimum), converts these
-    positions into the body-local frame, creates sphere geoms at those locations (with the
-    provided sphere radius), and finally removes the original mesh geom.
+    For each specified foot link, this function loads the MJCF file both as an
+    XML tree (for later writing) and as a Mujoco model to obtain the correct
+    (world) transformation for the mesh geom. It then loads the mesh file,
+    transforms its vertices using Mujoco's computed geom transform, computes
+    its axis-aligned bounding box in world coordinates, extracts the bottom
+    four corners (with z-coordinate at the minimum), converts these positions
+    into the body-local frame, creates sphere geoms at those locations (with
+    the provided sphere radius), and finally removes the original mesh geom.
 
     Args:
         mjcf_path: Path to the MJCF file.
@@ -129,19 +129,18 @@ def convert_feet_to_spheres(
         body_r_inv = body_r.T
         local_vertices = (body_r_inv @ vertices.T).T
 
-        # Compute the axis-aligned bounding box in the body-local coordinate system.
-        min_local = local_vertices.min(axis=0)
-        max_local = local_vertices.max(axis=0)
+        # Gets the bounding box of the hull.
+        min_x, min_y, min_z = local_vertices.min(axis=0)
+        max_x, max_y, max_z = local_vertices.max(axis=0)
 
         # The bottom face in body coordinates corresponds to the plane with z = min_local[2].
-        bottom_z = min_local[2] + sphere_radius
+        bottom_z = min_z + sphere_radius
         bottom_corners_local = np.array(
             [
-                np.array([min_local[0] + sphere_radius, min_local[1] + sphere_radius, bottom_z]),
-                np.array([min_local[0] + sphere_radius, max_local[1] - sphere_radius, bottom_z]),
-                np.array([max_local[0] - sphere_radius, min_local[1] + sphere_radius, bottom_z]),
-                np.array([max_local[0] - sphere_radius, max_local[1] - sphere_radius, bottom_z]),
-                np.array([(min_local[0] + max_local[0]) / 2, (min_local[1] + max_local[1]) / 2, bottom_z]),
+                np.array([min_x + sphere_radius, min_y + sphere_radius, bottom_z]),
+                np.array([max_x - sphere_radius, min_y + sphere_radius, bottom_z]),
+                np.array([min_x + sphere_radius, max_y - sphere_radius, bottom_z]),
+                np.array([max_x - sphere_radius, max_y - sphere_radius, bottom_z]),
             ]
         )
 
@@ -153,7 +152,7 @@ def convert_feet_to_spheres(
             # Now directly use corner_world as the correct position for the sphere
             # Make sure we're getting the correct world position with no further offsets.
             sphere_geom = ET.Element("geom")
-            sphere_geom.attrib["name"] = f"{body_name}_foot_sphere_{idx}"
+            sphere_geom.attrib["name"] = f"{mesh_geom_name}_sphere_{idx}"
             sphere_geom.attrib["type"] = "sphere"
             sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in corner)
             sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
@@ -163,12 +162,31 @@ def convert_feet_to_spheres(
                 if key in mesh_geom.attrib:
                     sphere_geom.attrib[key] = mesh_geom.attrib[key]
 
-            # TODO: Change for testing.
-            sphere_geom.attrib.pop("class", None)
-            sphere_geom.attrib["material"] = "floating_base_link_material"
-
             # Add the sphere to the body
             body_elem.append(sphere_geom)
+
+        # Also add a bounding box geom.
+        box_size = np.array(
+            [
+                (max_x - min_x) / 2 - sphere_radius,
+                (max_z - min_z) / 2,
+                (max_y - min_y) / 2 - sphere_radius,
+            ]
+        )
+        box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
+        box_pos = (body_r @ box_pos.T).T
+        box_geom = ET.Element("geom")
+        box_geom.attrib["name"] = f"{mesh_geom_name}_box"
+        box_geom.attrib["type"] = "box"
+        box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+        box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+
+        # Copies over any other attributes from the original mesh geom.
+        for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+            if key in mesh_geom.attrib:
+                box_geom.attrib[key] = mesh_geom.attrib[key]
+
+        body_elem.append(box_geom)
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
