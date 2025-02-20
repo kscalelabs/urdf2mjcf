@@ -15,6 +15,7 @@ import argparse
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Sequence
 
 import mujoco
 import numpy as np
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def convert_feet_to_spheres(
     mjcf_path: str | Path,
-    foot_links: list[str],
+    foot_links: Sequence[str],
     sphere_radius: float,
     class_name: str = "collision",
 ) -> None:
@@ -73,11 +74,14 @@ def convert_feet_to_spheres(
     # Run one step.
     mujoco.mj_step(model_mujoco, data)
 
+    foot_link_set = set(foot_links)
+
     # Iterate over all <body> elements and process those in foot_links.
     for body_elem in root.iter("body"):
         body_name = body_elem.attrib.get("name", "")
-        if body_name not in foot_links:
+        if body_name not in foot_link_set:
             continue
+        foot_link_set.remove(body_name)
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -190,7 +194,9 @@ def convert_feet_to_spheres(
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
-        # logger.info("Removed original mesh geom from link %s", body_name)
+
+    if foot_link_set:
+        raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
 
     # Save the modified MJCF file.
     save_xml(mjcf_path, tree)
