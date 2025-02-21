@@ -5,6 +5,8 @@ import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from scipy.spatial.transform import Rotation as R
+
 from urdf2mjcf.model import ConversionMetadata
 from urdf2mjcf.utils import save_xml
 
@@ -85,6 +87,14 @@ def add_sensors(
                 site_elem = ET.SubElement(link_body, "site", name=f"{imu.body_name}_site")
             site_name = site_elem.attrib["name"]
 
+            # Updates the site position and rotation.
+            if imu.rpy is not None:
+                rotation = R.from_euler("xyz", imu.rpy, degrees=True)
+                quat = rotation.as_quat()
+                site_elem.attrib["quat"] = " ".join(str(x) for x in quat)
+            if imu.pos is not None:
+                site_elem.attrib["pos"] = " ".join(str(x) for x in imu.pos)
+
             # Add the accelerometer
             acc_attrib = {
                 "name": f"{imu.body_name}_acc",
@@ -135,17 +145,21 @@ def add_sensors(
         raise ValueError("No <body> element found in the MJCF model to attach cameras.")
 
     for cam in metadata.cameras:
-        ET.SubElement(
-            first_body,
-            "camera",
-            attrib={
-                "name": cam.name,
-                "mode": cam.mode,
-                "pos": " ".join(str(x) for x in cam.pos),
-                "quat": " ".join(str(x) for x in cam.quat),
-                "fovy": str(cam.fovy),
-            },
-        )
+        attrib = {
+            "name": cam.name,
+            "mode": cam.mode,
+            "fovy": str(cam.fovy),
+        }
+
+        if cam.rpy is not None:
+            rotation = R.from_euler("xyz", cam.rpy, degrees=True)
+            quat = rotation.as_quat()
+            attrib["quat"] = " ".join(str(x) for x in quat)
+
+        if cam.pos is not None:
+            attrib["pos"] = " ".join(str(x) for x in cam.pos)
+
+        ET.SubElement(first_body, "camera", attrib=attrib)
 
     # Save changes
     save_xml(mjcf_path, tree)

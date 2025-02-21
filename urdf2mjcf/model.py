@@ -21,8 +21,8 @@ class JointParam(BaseModel):
 
 class ImuSensor(BaseModel):
     body_name: str
-    pos: list[float] = [0.0, 0.0, 0.0]
-    quat: list[float] = [1.0, 0.0, 0.0, 0.0]
+    pos: list[float] | None = None
+    rpy: list[float] | None = None
     acc_noise: float | None = None
     gyro_noise: float | None = None
     mag_noise: float | None = None
@@ -31,8 +31,8 @@ class ImuSensor(BaseModel):
 class CameraSensor(BaseModel):
     name: str
     mode: str
-    pos: list[float] = [0.0, 0.0, 0.0]
-    quat: list[float] = [1.0, 0.0, 0.0, 0.0]
+    pos: list[float] | None = None
+    rpy: list[float] | None = None
     fovy: float = 45.0
 
 
@@ -50,7 +50,7 @@ class ConversionMetadata(BaseModel):
             name="tracking_camera",
             mode="track",
             pos=[0, -2.0, 1.0],
-            quat=[0.7071, 0.3827, 0, 0],
+            rpy=[0.0, 0.0, 0.0],
             fovy=90,
         ),
     ]
