@@ -47,10 +47,17 @@ class ConversionMetadata(BaseModel):
     imus: list[ImuSensor] = []
     cameras: list[CameraSensor] = [
         CameraSensor(
-            name="tracking_camera",
+            name="front_camera",
             mode="track",
-            pos=[0, -2.0, 1.0],
-            rpy=[0.0, 0.0, 0.0],
+            pos=[0, 2.0, 0.5],
+            rpy=[90.0, 0.0, 180.0],
+            fovy=90,
+        ),
+        CameraSensor(
+            name="side_camera",
+            mode="track",
+            pos=[-2.0, 0.0, 0.5],
+            rpy=[90.0, 0.0, 270.0],
             fovy=90,
         ),
     ]

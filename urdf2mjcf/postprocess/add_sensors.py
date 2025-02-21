@@ -90,8 +90,9 @@ def add_sensors(
             # Updates the site position and rotation.
             if imu.rpy is not None:
                 rotation = R.from_euler("xyz", imu.rpy, degrees=True)
-                quat = rotation.as_quat()
-                site_elem.attrib["quat"] = " ".join(str(x) for x in quat)
+                qx, qy, qz, qw = rotation.as_quat(scalar_first=False)
+                site_elem.attrib["quat"] = f"{qw} {qx} {qy} {qz}"
+
             if imu.pos is not None:
                 site_elem.attrib["pos"] = " ".join(str(x) for x in imu.pos)
 
@@ -153,8 +154,8 @@ def add_sensors(
 
         if cam.rpy is not None:
             rotation = R.from_euler("xyz", cam.rpy, degrees=True)
-            quat = rotation.as_quat()
-            attrib["quat"] = " ".join(str(x) for x in quat)
+            qx, qy, qz, qw = rotation.as_quat(scalar_first=False)
+            attrib["quat"] = f"{qw} {qx} {qy} {qz}"
 
         if cam.pos is not None:
             attrib["pos"] = " ".join(str(x) for x in cam.pos)

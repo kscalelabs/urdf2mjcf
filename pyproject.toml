@@ -34,6 +34,7 @@ namespace_packages = false
 
 module = [
     "mujoco.*",
+    "scipy.*",
 ]
 
 ignore_missing_imports = true
