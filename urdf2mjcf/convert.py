@@ -197,6 +197,36 @@ def add_compiler(root: ET.Element) -> None:
     root.insert(0, element)
 
 
+def add_custom(root: ET.Element) -> None:
+    """Add a custom element to the MJCF root with Brax-specific parameters.
+
+    Args:
+        root: The MJCF root element.
+    """
+    element = ET.Element("custom")
+
+    # Add Brax custom parameters
+    brax_params = {
+        "constraint_limit_stiffness": "2500",
+        "constraint_stiffness": "27000",
+        "constraint_ang_damping": "30",
+        "constraint_vel_damping": "80",
+        "ang_damping": "-0.05",
+        "joint_scale_pos": "0.5",
+        "joint_scale_ang": "0.1",
+        "spring_mass_scale": "0",
+        "spring_inertia_scale": "1",
+        "matrix_inv_iterations": "20",
+        "solver_maxls": "15",
+    }
+
+    # Create numeric elements for each parameter
+    for name, value in brax_params.items():
+        ET.SubElement(element, "numeric", attrib={"name": name, "data": value})
+
+    root.insert(0, element)
+
+
 def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     """Add default settings with hierarchical structure for robot components."""
     joint_params: list[JointParam] = metadata.joint_params or []
@@ -466,6 +496,7 @@ def convert_urdf_to_mjcf(
 
     # Add compiler, assets, and default settings.
     add_compiler(mjcf_root)
+    add_custom(mjcf_root)
     add_option(mjcf_root)
     add_visual(mjcf_root)
     add_assets(mjcf_root, materials)
