@@ -813,8 +813,8 @@ def convert_urdf_to_mjcf(
         fix_base_joint(mjcf_path)
     if metadata.remove_redundancies:
         remove_redundancies(mjcf_path)
-    if (feet_spheres := metadata.feet_spheres) is not None:
-        make_feet_flat(mjcf_path, feet_spheres.foot_links)
+    if (flat_feet_links := metadata.flat_feet_links) is not None:
+        make_feet_flat(mjcf_path, flat_feet_links)
     add_sensors(mjcf_path, root_link_name, metadata=metadata)
 
 
