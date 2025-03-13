@@ -38,7 +38,6 @@ class CameraSensor(BaseModel):
 
 class FeetSpheresParams(BaseModel):
     foot_links: list[str]
-    sphere_radius: float
 
 
 class ConversionMetadata(BaseModel):

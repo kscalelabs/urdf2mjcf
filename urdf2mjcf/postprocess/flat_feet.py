@@ -26,10 +26,9 @@ from urdf2mjcf.utils import save_xml
 logger = logging.getLogger(__name__)
 
 
-def convert_feet_to_spheres(
+def make_feet_flat(
     mjcf_path: str | Path,
     foot_links: Sequence[str],
-    sphere_radius: float,
     class_name: str = "collision",
 ) -> None:
     """Converts the feet of an MJCF model into spheres using Mujoco.
@@ -46,7 +45,6 @@ def convert_feet_to_spheres(
     Args:
         mjcf_path: Path to the MJCF file.
         foot_links: List of link (body) names to process.
-        sphere_radius: The sphere radius (in meters) to use.
         class_name: The class name to use for the sphere geoms.
     """
     mjcf_path = Path(mjcf_path)
@@ -137,44 +135,12 @@ def convert_feet_to_spheres(
         min_x, min_y, min_z = local_vertices.min(axis=0)
         max_x, max_y, max_z = local_vertices.max(axis=0)
 
-        # The bottom face in body coordinates corresponds to the plane with z = min_local[2].
-        bottom_z = min_z + sphere_radius
-        bottom_corners_local = np.array(
-            [
-                np.array([min_x + sphere_radius, min_y + sphere_radius, bottom_z]),
-                np.array([max_x - sphere_radius, min_y + sphere_radius, bottom_z]),
-                np.array([min_x + sphere_radius, max_y - sphere_radius, bottom_z]),
-                np.array([max_x - sphere_radius, max_y - sphere_radius, bottom_z]),
-            ]
-        )
-
-        # Transforms back to the STL reference frame.
-        bottom_corners_geom = (body_r @ bottom_corners_local.T).T
-
-        # Create a new sphere geom at each transformed corner.
-        for idx, corner in enumerate(bottom_corners_geom, start=1):
-            # Now directly use corner_world as the correct position for the sphere
-            # Make sure we're getting the correct world position with no further offsets.
-            sphere_geom = ET.Element("geom")
-            sphere_geom.attrib["name"] = f"{mesh_geom_name}_sphere_{idx}"
-            sphere_geom.attrib["type"] = "sphere"
-            sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in corner)
-            sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
-
-            # Copies over any other attributes from the original mesh geom.
-            for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
-                if key in mesh_geom.attrib:
-                    sphere_geom.attrib[key] = mesh_geom.attrib[key]
-
-            # Add the sphere to the body
-            body_elem.append(sphere_geom)
-
-        # Also add a bounding box geom.
+        # Add a bounding box geom.
         box_size = np.array(
             [
-                (max_x - min_x) / 2 - sphere_radius,
+                (max_x - min_x) / 2,
                 (max_z - min_z) / 2,
-                (max_y - min_y) / 2 - sphere_radius,
+                (max_y - min_y) / 2,
             ]
         )
         box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
@@ -204,15 +170,12 @@ def convert_feet_to_spheres(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Convert MJCF foot mesh geometries into spheres at the bottom corners of their bounding boxes."
-    )
+    parser = argparse.ArgumentParser(description="Converts MJCF feet from meshes to boxes.")
     parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
-    parser.add_argument("--radius", type=float, required=True, help="Radius of the spheres to create.")
     parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot spheres.")
     args = parser.parse_args()
 
-    convert_feet_to_spheres(args.mjcf_path, args.links, args.radius)
+    make_feet_flat(args.mjcf_path, args.links)
 
 
 if __name__ == "__main__":
