@@ -14,6 +14,7 @@ import colorlogging
 from urdf2mjcf.model import ConversionMetadata, JointParam
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
+from urdf2mjcf.postprocess.explicit_floor_contacts import add_explicit_floor_contacts
 from urdf2mjcf.postprocess.flat_feet import make_feet_flat
 from urdf2mjcf.postprocess.remove_redundancies import remove_redundancies
 from urdf2mjcf.utils import save_xml
@@ -815,6 +816,8 @@ def convert_urdf_to_mjcf(
         remove_redundancies(mjcf_path)
     if (flat_feet_links := metadata.flat_feet_links) is not None:
         make_feet_flat(mjcf_path, flat_feet_links)
+    if (explicit_floor_contacts := metadata.explicit_floor_contacts) is not None:
+        add_explicit_floor_contacts(mjcf_path, explicit_floor_contacts)
     add_sensors(mjcf_path, root_link_name, metadata=metadata)
 
 

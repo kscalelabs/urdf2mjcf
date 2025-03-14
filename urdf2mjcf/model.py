@@ -57,6 +57,7 @@ class ConversionMetadata(BaseModel):
         ),
     ]
     flat_feet_links: list[str] | None = None
+    explicit_floor_contacts: list[str] | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
 
