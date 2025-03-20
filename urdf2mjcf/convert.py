@@ -258,6 +258,10 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
         },
     )
 
+    # Add maxhullvert for efficient collising handling.
+    if metadata.maxhullvert is not None:
+        ET.SubElement(default, "mesh", attrib={"maxhullvert": str(metadata.maxhullvert)})
+
     # Replace existing default element if present
     existing_element = root.find("default")
     if isinstance(existing_element, ET.Element):
