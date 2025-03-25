@@ -98,6 +98,13 @@ def make_feet_flat(
         mesh_geom = mesh_geoms[0]
         mesh_geom_name = mesh_geom.attrib.get("name")
 
+        # Find any visual meshes in this body to get material from - using naming convention
+        visual_mesh_name = f"{body_name}_visual"
+        visual_meshes = [geom for geom in body_elem.findall("geom") 
+                         if geom.attrib.get("name") == visual_mesh_name]
+        assert len(visual_meshes) == 1, f"Expected exactly one visual mesh for {visual_mesh_name} in body {body_name}"
+        visual_mesh = visual_meshes[0]
+
         mesh_name = mesh_geom.attrib.get("mesh")
         if not mesh_name:
             logger.warning("Mesh geom in link %s does not specify a mesh file; skipping.", body_name)
@@ -160,7 +167,20 @@ def make_feet_flat(
                 box_geom.attrib[key] = mesh_geom.attrib[key]
 
         body_elem.append(box_geom)
-
+        
+        # Update the visual mesh to be a box instead of creating a new one
+        # Replace the mesh with a box
+        visual_mesh.attrib["type"] = "box"
+        visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+        visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
+        visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+        
+        # Remove mesh attribute as it's now a box
+        if "mesh" in visual_mesh.attrib:
+            del visual_mesh.attrib["mesh"]
+            
+        logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
+        
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
 
@@ -169,13 +189,13 @@ def make_feet_flat(
 
     # Save the modified MJCF file.
     save_xml(mjcf_path, tree)
-    logger.info("Saved modified MJCF file with feet converted to spheres at %s", mjcf_path)
+    logger.info("Saved modified MJCF file with feet converted to boxes at %s", mjcf_path)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Converts MJCF feet from meshes to boxes.")
     parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
-    parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot spheres.")
+    parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot boxes.")
     args = parser.parse_args()
 
     make_feet_flat(args.mjcf_path, args.links)
