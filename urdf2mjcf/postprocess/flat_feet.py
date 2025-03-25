@@ -101,8 +101,16 @@ def make_feet_flat(
         # Find any visual meshes in this body to get material from - using naming convention
         visual_mesh_name = f"{body_name}_visual"
         visual_meshes = [geom for geom in body_elem.findall("geom") if geom.attrib.get("name") == visual_mesh_name]
-        assert len(visual_meshes) == 1, f"Expected exactly one visual mesh for {visual_mesh_name} in body {body_name}"
-        visual_mesh = visual_meshes[0]
+        found_visual_mesh = len(visual_meshes) == 1
+        if not found_visual_mesh:
+            logger.warning(
+                "No visual mesh found for %s in body %s."
+                "Box collision will be added, but corresponding visual will not be updated.",
+                visual_mesh_name,
+                body_name,
+            )
+        else:
+            visual_mesh = visual_meshes[0]
 
         mesh_name = mesh_geom.attrib.get("mesh")
         if not mesh_name:
@@ -169,16 +177,17 @@ def make_feet_flat(
 
         # Update the visual mesh to be a box instead of creating a new one
         # Replace the mesh with a box
-        visual_mesh.attrib["type"] = "box"
-        visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
-        visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
-        visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+        if found_visual_mesh:
+            visual_mesh.attrib["type"] = "box"
+            visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+            visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
+            visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
 
-        # Remove mesh attribute as it's now a box
-        if "mesh" in visual_mesh.attrib:
-            del visual_mesh.attrib["mesh"]
+            # Remove mesh attribute as it's now a box
+            if "mesh" in visual_mesh.attrib:
+                del visual_mesh.attrib["mesh"]
 
-        logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
+            logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
