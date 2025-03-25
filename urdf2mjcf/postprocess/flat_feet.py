@@ -20,6 +20,7 @@ from typing import Sequence
 import mujoco
 import numpy as np
 import trimesh
+from scipy.spatial.transform import Rotation as R
 
 from urdf2mjcf.utils import save_xml
 
@@ -145,10 +146,12 @@ def make_feet_flat(
         )
         box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
         box_pos = (body_r @ box_pos.T).T
+        box_quat = R.from_matrix(body_r_inv).as_quat()
         box_geom = ET.Element("geom")
         box_geom.attrib["name"] = f"{mesh_geom_name}_box"
         box_geom.attrib["type"] = "box"
         box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+        box_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
         box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
 
         # Copies over any other attributes from the original mesh geom.
