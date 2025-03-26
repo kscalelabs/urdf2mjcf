@@ -599,6 +599,9 @@ def convert_urdf_to_mjcf(
                 else:
                     raise ValueError(f"Unsupported joint type: {jtype}")
 
+                # Only for slide and hinge joints
+                j_attrib["ref"] = "0.0"
+
                 for joint_param in joint_params:
                     if any(j_name.endswith(suffix) for suffix in joint_param.suffixes):
                         j_attrib["class"] = joint_param.name
