@@ -10,11 +10,12 @@ from urdf2mjcf.utils import save_xml
 logger = logging.getLogger(__name__)
 
 
-def fix_base_joint(mjcf_path: str | Path) -> None:
+def fix_base_joint(mjcf_path: str | Path, add_freejoint: bool = True) -> None:
     """Fixes the base joint configuration.
 
     Args:
         mjcf_path: Path to the MJCF file
+        add_freejoint: Whether to add a freejoint to the root body
     """
     tree = ET.parse(mjcf_path)
     root = tree.getroot()
@@ -42,7 +43,9 @@ def fix_base_joint(mjcf_path: str | Path) -> None:
                 "quat": robot_body.get("quat", "1 0 0 0"),
             },
         )
-        ET.SubElement(new_root, "freejoint", attrib={"name": "floating_base"})
+
+        if add_freejoint:
+            ET.SubElement(new_root, "freejoint", attrib={"name": "floating_base"})
 
         # Move robot body under new root
         worldbody.remove(robot_body)
@@ -51,7 +54,7 @@ def fix_base_joint(mjcf_path: str | Path) -> None:
         new_root.append(robot_body)
         worldbody.insert(0, new_root)
 
-    else:
+    elif add_freejoint:
         logger.warning("Robot body does not have a joint; adding a freejoint")
         robot_body.insert(0, ET.Element("freejoint", attrib={"name": "floating_base"}))
 

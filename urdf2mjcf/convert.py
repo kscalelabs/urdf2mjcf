@@ -818,7 +818,7 @@ def convert_urdf_to_mjcf(
 
     # Apply post-processing steps
     if metadata.floating_base:
-        fix_base_joint(mjcf_path)
+        fix_base_joint(mjcf_path, metadata.freejoint)
     if metadata.remove_redundancies:
         remove_redundancies(mjcf_path)
     if (flat_feet_links := metadata.flat_feet_links) is not None:
