@@ -137,30 +137,50 @@ def make_feet_flat(
         # Transform the mesh vertices to world coordinates.
         vertices = mesh.vertices  # shape (n,3)
 
-        # Convert the world vertices to the body-local coordinate system.
-        # This ensures that the "bottom" of the mesh corresponds to the minimal z-value in body coordinates.
-        body = data.body(body_name)
+        # find geom by name in the XML and use its attributes
+        geom_pos = np.zeros(3, dtype=np.float64)
+        geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # Default identity quaternion
 
-        # Since the body rotation matrix is orthogonal, its inverse is its transpose.
-        body_r = body.xmat.reshape(3, 3)
-        body_r_inv = body_r.T
-        local_vertices = (body_r_inv @ vertices.T).T
+        # Get position and orientation from the mesh geom XML
+        if "pos" in mesh_geom.attrib:
+            pos_values = [float(v) for v in mesh_geom.attrib["pos"].split()]
+            geom_pos[:] = pos_values  # Update values in-place
 
-        # Gets the bounding box of the hull.
+        if "quat" in mesh_geom.attrib:
+            quat_values = [float(v) for v in mesh_geom.attrib["quat"].split()]
+            geom_quat[:] = quat_values  # Update values in-place
+
+        # Get rotation matrix from quaternion
+        geom_r = R.from_quat(geom_quat).as_matrix()
+
+        # Transform vertices to mesh-local coordinates
+        local_vertices = vertices.copy()
+
+        # Apply any local transform from the mesh geom
+        if np.any(geom_pos != 0) or not np.allclose(geom_quat, [1, 0, 0, 0]):
+            # Transform vertices to account for geom's local position and orientation
+            local_vertices = (geom_r @ vertices.T).T + geom_pos
+
+        # Compute bounding box in local coordinates
         min_x, min_y, min_z = local_vertices.min(axis=0)
         max_x, max_y, max_z = local_vertices.max(axis=0)
 
-        # Add a bounding box geom.
+        # Create box with same dimensions as original mesh bounding box
         box_size = np.array(
             [
                 (max_x - min_x) / 2,
-                (max_z - min_z) / 2,
                 (max_y - min_y) / 2,
+                (max_z - min_z) / 2,
             ]
         )
+
+        # Position at center of bounding box
         box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
-        box_pos = (body_r @ box_pos.T).T
-        box_quat = R.from_matrix(body_r_inv).as_quat()
+
+        # Use the original geom's orientation
+        box_quat = geom_quat
+
+        # Add a bounding box geom.
         box_geom = ET.Element("geom")
         box_geom.attrib["name"] = f"{mesh_geom_name}_box"
         box_geom.attrib["type"] = "box"
