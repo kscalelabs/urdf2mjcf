@@ -185,7 +185,7 @@ def add_compiler(root: ET.Element) -> None:
                  timestep for the PD controller.
     """
     attrib = {
-        "angle": "radian",
+        "angle": "degree",
         # "eulerseq": "zyx",
         # "autolimits": "true",
     }
