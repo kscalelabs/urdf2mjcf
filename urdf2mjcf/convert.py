@@ -176,16 +176,15 @@ def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> floa
     return local_min_z
 
 
-def add_compiler(root: ET.Element) -> None:
+def add_compiler(root: ET.Element, metadata: ConversionMetadata) -> None:
     """Add a compiler element to the MJCF root.
 
     Args:
         root: The MJCF root element.
-        timestep: Optional control timestep in seconds. If specified, sets the simulation
-                 timestep for the PD controller.
+        metadata: Conversion metadata.
     """
     attrib = {
-        "angle": "degree",
+        "angle": metadata.angle,
         # "eulerseq": "zyx",
         # "autolimits": "true",
     }
@@ -465,7 +464,7 @@ def convert_urdf_to_mjcf(
     mjcf_root: ET.Element = ET.Element("mujoco", attrib={"model": robot.attrib.get("name", "converted_robot")})
 
     # Add compiler, assets, and default settings.
-    add_compiler(mjcf_root)
+    add_compiler(mjcf_root, metadata)
     add_option(mjcf_root)
     add_visual(mjcf_root)
     add_assets(mjcf_root, materials)

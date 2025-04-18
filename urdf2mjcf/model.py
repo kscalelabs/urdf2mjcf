@@ -1,6 +1,10 @@
 """Defines the Pydantic model for the URDF to MJCF conversion."""
 
+from typing import Literal
+
 from pydantic import BaseModel
+
+Angle = Literal["radian", "degree"]
 
 
 class CollisionParams(BaseModel):
@@ -72,6 +76,7 @@ class ConversionMetadata(BaseModel):
     remove_redundancies: bool = True
     floating_base: bool = True
     maxhullvert: int | None = None
+    angle: Angle = "radian"
 
     class Config:
         extra = "forbid"
