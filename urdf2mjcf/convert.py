@@ -184,7 +184,7 @@ def add_compiler(root: ET.Element, metadata: ConversionMetadata) -> None:
         metadata: Conversion metadata.
     """
     attrib = {
-        "angle": metadata.angle,
+        "angle": str(metadata.angle),
         # "eulerseq": "zyx",
         # "autolimits": "true",
     }
