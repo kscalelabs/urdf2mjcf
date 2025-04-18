@@ -71,7 +71,6 @@ class ConversionMetadata(BaseModel):
     explicit_floor_contacts: list[str] | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
-    freejoint: bool = True
     maxhullvert: int | None = None
 
     class Config:
