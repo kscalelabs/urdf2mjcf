@@ -162,6 +162,35 @@ def add_sensors(
 
         ET.SubElement(first_body, "camera", attrib=attrib)
 
+    # Add force sensors.
+    for fs in metadata.force_sensors:
+        # Find the body to attach the site to
+        link_body = mjcf_root.find(f".//body[@name='{fs.body_name}']")
+        if link_body is None:
+            options = [body.attrib["name"] for body in mjcf_root.findall(".//body")]
+            logger.warning(
+                f"Body '{fs.body_name}' not found for force sensor site '{fs.site_name}'. "
+                f"Skipping sensor. Available bodies: {options}"
+            )
+            continue
+
+        # Find or create the site within the body
+        site_elem = link_body.find(f"./site[@name='{fs.site_name}']")
+        if site_elem is None:
+            site_elem = ET.SubElement(link_body, "site", name=fs.site_name)
+            logger.info(f"Created site '{fs.site_name}' on body '{fs.body_name}' for force sensor.")
+
+        # Add the force sensor element
+        fs_name = fs.name if fs.name else f"{fs.site_name}_force"
+        fs_attrib = {
+            "name": fs_name,
+            "site": fs.site_name,  # Use the site_name directly
+        }
+        if fs.noise is not None:
+            fs_attrib["noise"] = str(fs.noise)
+
+        ET.SubElement(sensor_elem, "force", attrib=fs_attrib)
+
     # Save changes
     save_xml(mjcf_path, tree)
 

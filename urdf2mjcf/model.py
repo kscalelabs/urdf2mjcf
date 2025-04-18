@@ -36,7 +36,17 @@ class CameraSensor(BaseModel):
     fovy: float = 45.0
 
 
+class ForceSensor(BaseModel):
+    """Represents a force sensor attached to a site."""
+
+    body_name: str
+    site_name: str
+    name: str | None = None
+    noise: float | None = None
+
+
 class ConversionMetadata(BaseModel):
+    freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
     joint_params: list[JointParam] | None = None
     imus: list[ImuSensor] = []
@@ -56,6 +66,7 @@ class ConversionMetadata(BaseModel):
             fovy=90,
         ),
     ]
+    force_sensors: list[ForceSensor] = []
     flat_feet_links: list[str] | None = None
     explicit_floor_contacts: list[str] | None = None
     remove_redundancies: bool = True
