@@ -90,18 +90,18 @@ def add_backlash_joints(root: ET.Element) -> None:
         # Create a backlash joint with the same axis
         backlash_joint = ET.Element(
             "joint",
-            attrib={
-                "name": f"{joint_name}_backlash",
-                "type": "hinge",
-                "class": "backlash",
-                "pos": "0 0 0",  # Same position as the original joint
-            },
+            attrib={"name": f"{joint_name}_backlash", "class": "backlash"},
         )
 
         # Copy the axis attribute if it exists
-        axis = joint.get("axis")
-        if axis is not None:
+        if (axis := joint.get("axis")) is not None:
             backlash_joint.set("axis", axis)
+
+        # Copy the joint position and quaternion.
+        if (pos := joint.get("pos")) is not None:
+            backlash_joint.set("pos", pos)
+        if (quat := joint.get("quat")) is not None:
+            backlash_joint.set("quat", quat)
 
         # Add the backlash joint after the original joint
         # Find the index of the joint in the parent body's children

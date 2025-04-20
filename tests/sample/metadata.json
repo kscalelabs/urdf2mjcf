@@ -28,5 +28,6 @@
       "gyro_noise": 0.01
     }
   ],
-  "angle": "degree"
+  "angle": "degree",
+  "backlash": 0.5
 }
