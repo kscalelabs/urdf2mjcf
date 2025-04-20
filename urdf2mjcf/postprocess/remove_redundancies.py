@@ -75,36 +75,6 @@ def is_close_to_identity(value: str, tolerance: float = 1e-6) -> bool:
         return False
 
 
-def remove_redundant_geoms(root: ET.Element) -> None:
-    """Removes redundant geoms from the MJCF file.
-
-    We can remove redundant `pos` tags which are close to [0, 0, 0] and
-    redundant `quat` tags which are close to [1, 0, 0, 0].
-
-    Args:
-        root: The root element of the MJCF file.
-    """
-    # Find all elements with pos or quat attributes
-    for elem in root.findall(".//*[@pos]"):
-        if is_close_to_identity(elem.attrib["pos"]):
-            del elem.attrib["pos"]
-
-    for elem in root.findall(".//*[@quat]"):
-        if is_close_to_identity(elem.attrib["quat"]):
-            del elem.attrib["quat"]
-
-    # Count removed attributes for logging
-    removed_pos = len(root.findall(".//*[@pos]"))
-    removed_quat = len(root.findall(".//*[@quat]"))
-
-    if removed_pos > 0 or removed_quat > 0:
-        logger.info(
-            "Removed %d redundant pos and %d redundant quat attributes",
-            removed_pos,
-            removed_quat,
-        )
-
-
 def remove_redundancies(mjcf_path: str | Path) -> None:
     """Remove redundancies from the MJCF file.
 
@@ -115,7 +85,6 @@ def remove_redundancies(mjcf_path: str | Path) -> None:
     root = tree.getroot()
 
     remove_redundant_materials(root)
-    remove_redundant_geoms(root)
 
     # Save the modified MJCF file
     save_xml(mjcf_path, tree)

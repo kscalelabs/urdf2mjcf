@@ -502,6 +502,13 @@
         <cylinder length="0.1" radius="0.05" />
       </geometry>
     </visual>
+
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.055 0 -0.06" />
+      <geometry>
+        <box size="0.25 0.14 0.02" />
+      </geometry>
+    </collision>
   </link>
 
   <link name="RLEG_LINK1">
@@ -613,6 +620,13 @@
         <cylinder length="0.1" radius="0.05" />
       </geometry>
     </visual>
+
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.055 0 -0.06" />
+      <geometry>
+        <box size="0.25 0.14 0.02" />
+      </geometry>
+    </collision>
   </link>
 
 

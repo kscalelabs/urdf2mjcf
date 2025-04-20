@@ -29,5 +29,6 @@
     }
   ],
   "angle": "degree",
+  "add_floor": true,
   "backlash": 0.5
 }

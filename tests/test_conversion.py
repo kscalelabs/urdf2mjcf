@@ -19,6 +19,9 @@ def test_conversion_output(tmpdir: Path) -> None:
         copy_meshes=False,
         metadata_file=urdf_path.parent / "metadata.json",
     )
+
+    # After making a change, put a breakpoint here and make sure you try out
+    # the model in Mujoco before committing changes.
     assert mjcf_path.exists()
 
 

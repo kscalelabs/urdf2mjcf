@@ -49,6 +49,13 @@ class ForceSensor(BaseModel):
     noise: float | None = None
 
 
+class ExplicitFloorContacts(BaseModel):
+    """Add explicit floor contacts."""
+
+    contact_links: list[str]
+    class_name: str = "collision"
+
+
 class ConversionMetadata(BaseModel):
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
@@ -72,11 +79,13 @@ class ConversionMetadata(BaseModel):
     ]
     force_sensors: list[ForceSensor] = []
     flat_feet_links: list[str] | None = None
-    explicit_floor_contacts: list[str] | None = None
+    explicit_contacts: ExplicitFloorContacts | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
     maxhullvert: int | None = None
     angle: Angle = "radian"
+    floor_name: str = "floor"
+    add_floor: bool = False
     backlash: float | None = None
     backlash_damping: float = 0.01
 

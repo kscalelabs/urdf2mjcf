@@ -19,6 +19,7 @@ def add_explicit_floor_contacts(
     mjcf_path: str | Path,
     contact_links: Sequence[str],
     class_name: str = "collision",
+    floor_name: str = "floor",
 ) -> None:
     """Adds explicit floor contact pairs for specified links.
 
@@ -30,6 +31,7 @@ def add_explicit_floor_contacts(
         mjcf_path: Path to the MJCF file.
         contact_links: List of link (body) names to add floor contacts for.
         class_name: The class name of the collision geoms to use.
+        floor_name: The name of the floor geom to contact with.
     """
     mjcf_path = Path(mjcf_path)
     tree = ET.parse(mjcf_path)
@@ -79,7 +81,7 @@ def add_explicit_floor_contacts(
     for geom_name in geom_names:
         pair = ET.SubElement(contact, "pair")
         pair.attrib["geom1"] = geom_name
-        pair.attrib["geom2"] = "floor"
+        pair.attrib["geom2"] = floor_name
 
     # Save the modified MJCF file
     save_xml(mjcf_path, tree)
@@ -90,9 +92,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Adds explicit floor contact pairs for specified links.")
     parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
     parser.add_argument("--links", nargs="+", required=True, help="List of link names to add floor contacts for.")
+    parser.add_argument(
+        "--class-name",
+        type=str,
+        default="collision",
+        help="Class name of the collision geoms to use.",
+    )
+    parser.add_argument(
+        "--floor-name",
+        type=str,
+        default="floor",
+        help="Name of the floor geom to contact with.",
+    )
     args = parser.parse_args()
 
-    add_explicit_floor_contacts(args.mjcf_path, args.links)
+    add_explicit_floor_contacts(args.mjcf_path, args.links, args.class_name, args.floor_name)
 
 
 if __name__ == "__main__":
