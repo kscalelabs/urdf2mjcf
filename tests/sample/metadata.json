@@ -27,5 +27,6 @@
       "acc_noise": 0.001,
       "gyro_noise": 0.01
     }
-  ]
+  ],
+  "angle": "degree"
 }

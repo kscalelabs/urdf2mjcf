@@ -16,6 +16,7 @@ from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.explicit_floor_contacts import add_explicit_floor_contacts
 from urdf2mjcf.postprocess.flat_feet import make_feet_flat
+from urdf2mjcf.postprocess.make_degrees import make_degrees
 from urdf2mjcf.postprocess.remove_redundancies import remove_redundancies
 from urdf2mjcf.utils import save_xml
 
@@ -176,15 +177,14 @@ def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> floa
     return local_min_z
 
 
-def add_compiler(root: ET.Element, metadata: ConversionMetadata) -> None:
+def add_compiler(root: ET.Element) -> None:
     """Add a compiler element to the MJCF root.
 
     Args:
         root: The MJCF root element.
-        metadata: Conversion metadata.
     """
     attrib = {
-        "angle": str(metadata.angle),
+        "angle": "radian",
         # "eulerseq": "zyx",
         # "autolimits": "true",
     }
@@ -464,7 +464,7 @@ def convert_urdf_to_mjcf(
     mjcf_root: ET.Element = ET.Element("mujoco", attrib={"model": robot.attrib.get("name", "converted_robot")})
 
     # Add compiler, assets, and default settings.
-    add_compiler(mjcf_root, metadata)
+    add_compiler(mjcf_root)
     add_option(mjcf_root)
     add_visual(mjcf_root)
     add_assets(mjcf_root, materials)
@@ -816,6 +816,9 @@ def convert_urdf_to_mjcf(
     save_xml(mjcf_path, ET.ElementTree(mjcf_root))
 
     # Apply post-processing steps
+    if metadata.angle != "radian":
+        assert metadata.angle == "degree", "Only 'radian' and 'degree' are supported."
+        make_degrees(mjcf_path)
     if metadata.floating_base:
         fix_base_joint(mjcf_path, metadata.freejoint)
     if metadata.remove_redundancies:
