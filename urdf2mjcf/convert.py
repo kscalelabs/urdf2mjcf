@@ -12,6 +12,7 @@ from pathlib import Path
 import colorlogging
 
 from urdf2mjcf.model import ConversionMetadata, JointParam
+from urdf2mjcf.postprocess.add_backlash import add_backlash
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.explicit_floor_contacts import add_explicit_floor_contacts
@@ -819,6 +820,8 @@ def convert_urdf_to_mjcf(
     if metadata.angle != "radian":
         assert metadata.angle == "degree", "Only 'radian' and 'degree' are supported."
         make_degrees(mjcf_path)
+    if metadata.backlash:
+        add_backlash(mjcf_path, metadata.backlash, metadata.backlash_damping)
     if metadata.floating_base:
         fix_base_joint(mjcf_path, metadata.freejoint)
     if metadata.remove_redundancies:

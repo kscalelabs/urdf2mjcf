@@ -77,6 +77,8 @@ class ConversionMetadata(BaseModel):
     floating_base: bool = True
     maxhullvert: int | None = None
     angle: Angle = "radian"
+    backlash: float | None = None
+    backlash_damping: float = 0.01
 
     class Config:
         extra = "forbid"
