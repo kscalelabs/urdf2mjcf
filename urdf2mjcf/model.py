@@ -8,8 +8,9 @@ Angle = Literal["radian", "degree"]
 
 
 class CollisionParams(BaseModel):
-    friction: list[float] = [0.8, 0.02, 0.01]
     condim: int = 6
+    contype: int = 0
+    conaffinity: int = 1
 
 
 class JointParam(BaseModel):

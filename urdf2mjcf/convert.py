@@ -254,7 +254,8 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
         "geom",
         attrib={
             "condim": str(metadata.collision_params.condim),
-            "friction": " ".join(str(f) for f in metadata.collision_params.friction),
+            "contype": str(metadata.collision_params.contype),
+            "conaffinity": str(metadata.collision_params.conaffinity),
             "group": "3",
         },
     )
