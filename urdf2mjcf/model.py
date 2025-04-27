@@ -11,8 +11,8 @@ class CollisionParams(BaseModel):
     condim: int = 6
     contype: int = 0
     conaffinity: int = 1
-    solimp: list[float] = [0.015, 1.0, 0.031]
-    solref: list[float] = [0.02, 1.0]
+    solimp: list[float] = [0.99, 0.999, 0.00001]
+    solref: list[float] = [0.005, 1.0]
     friction: list[float] = [0.8, 0.02, 0.01]
 
 
