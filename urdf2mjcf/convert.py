@@ -257,6 +257,9 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
             "contype": str(metadata.collision_params.contype),
             "conaffinity": str(metadata.collision_params.conaffinity),
             "group": "3",
+            "solimp": " ".join(f"{x:.6g}" for x in metadata.collision_params.solimp),
+            "solref": " ".join(f"{x:.6g}" for x in metadata.collision_params.solref),
+            "friction": " ".join(f"{x:.6g}" for x in metadata.collision_params.friction),
         },
     )
 
