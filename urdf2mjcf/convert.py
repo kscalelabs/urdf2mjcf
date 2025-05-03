@@ -17,7 +17,7 @@ from urdf2mjcf.postprocess.add_floor import add_floor
 from urdf2mjcf.postprocess.add_sensors import add_sensors
 from urdf2mjcf.postprocess.base_joint import fix_base_joint
 from urdf2mjcf.postprocess.explicit_floor_contacts import add_explicit_floor_contacts
-from urdf2mjcf.postprocess.flat_feet import make_feet_flat
+from urdf2mjcf.postprocess.add_new_feet_collision import add_new_feet_collision
 from urdf2mjcf.postprocess.make_degrees import make_degrees
 from urdf2mjcf.postprocess.remove_redundancies import remove_redundancies
 from urdf2mjcf.utils import save_xml
@@ -839,7 +839,7 @@ def convert_urdf_to_mjcf(
     if metadata.remove_redundancies:
         remove_redundancies(mjcf_path)
     if (flat_feet_links := metadata.flat_feet_links) is not None:
-        make_feet_flat(mjcf_path, flat_feet_links)
+        add_new_feet_collision(mjcf_path, flat_feet_links)
     if metadata.add_floor:
         add_floor(mjcf_path, floor_name=metadata.floor_name)
     if (explicit_contacts := metadata.explicit_contacts) is not None:

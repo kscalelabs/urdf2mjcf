@@ -1,17 +1,15 @@
-"""Converts the feet of an MJCF model into spheres.
+"""Replaces foot mesh geoms with two parallel capsules along the local x-axis.
 
-For each specified foot link (which is assumed to contain a mesh geom),
-this script loads the MJCF both with XML (for modification) and with Mujoco
-(for computing the correct transformation of the mesh geometry). For each
-foot link, it loads the mesh file, applies the transform computed by Mujoco
-(i.e. the combined effect of any joint, body, and geom transformations),
-computes the axis-aligned bounding box in world coordinates, finds the bottom
-four corners of that bounding box (with the provided sphere radius), converts
-these points into the body-local coordinates, creates sphere geoms at each
-location, and finally removes the original mesh geom.
+For each specified foot link (body), this script finds a mesh geom
+(optionally matching `class_name`). It calculates the mesh's bounding box
+in its local frame (relative to the body, considering the geom's transform).
+Based on this bounding box, it creates two capsule geoms oriented along the
+local X-axis, positioned symmetrically along the local Y-axis. The original
+mesh geom is removed.
 """
 
 import argparse
+import copy
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -22,31 +20,26 @@ import numpy as np
 import trimesh
 from scipy.spatial.transform import Rotation as R
 
-from urdf2mjcf.utils import save_xml
+from urdf2mjcf.utils import save_xml  # Assuming this utility exists
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)  # Add basic logging configuration
 
 
-def make_feet_flat(
+def add_new_feet_collision(
     mjcf_path: str | Path,
     foot_links: Sequence[str],
     class_name: str = "collision",
+    min_radius: float = 0.005,  # Add minimum radius to avoid zero-size capsules
 ) -> None:
-    """Converts the feet of an MJCF model into spheres using Mujoco.
-
-    For each specified foot link, this function loads the MJCF file both as an
-    XML tree (for later writing) and as a Mujoco model to obtain the correct
-    (world) transformation for the mesh geom. It then loads the mesh file,
-    transforms its vertices using Mujoco's computed geom transform, computes
-    its axis-aligned bounding box in world coordinates, extracts the bottom
-    four corners (with z-coordinate at the minimum), converts these positions
-    into the body-local frame, creates sphere geoms at those locations (with
-    the provided sphere radius), and finally removes the original mesh geom.
+    """Replaces foot mesh geoms with two parallel capsules along the local x-axis.
 
     Args:
         mjcf_path: Path to the MJCF file.
-        foot_links: List of link (body) names to process.
-        class_name: The class name to use for the sphere geoms.
+        foot_links: List of link (body) names containing foot meshes to process.
+        class_name: The class name used to identify the collision mesh geom
+            if multiple mesh geoms exist in a body.
+        min_radius: Minimum radius for the capsules to prevent zero-size geoms.
     """
     mjcf_path = Path(mjcf_path)
     tree = ET.parse(mjcf_path)
@@ -81,6 +74,8 @@ def make_feet_flat(
         if body_name not in foot_link_set:
             continue
         foot_link_set.remove(body_name)
+
+        mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -120,6 +115,10 @@ def make_feet_flat(
         if mesh_name not in mesh_name_to_path:
             logger.warning("Mesh name %s not found in <asset> element; skipping.", mesh_name)
             continue
+
+        if mesh_name not in mesh_name_to_path:
+            logger.warning("Mesh name %s not found in <asset> element; skipping.", mesh_name)
+            continue
         mesh_file = mesh_name_to_path[mesh_name]
 
         # Load the mesh using trimesh.
@@ -135,11 +134,11 @@ def make_feet_flat(
             continue
 
         # Transform the mesh vertices to world coordinates.
-        vertices = mesh.vertices  # shape (n,3)
+        vertices = mesh.vertices  # shape (n, 3)
 
-        # find geom by name in the XML and use its attributes
+        # Get local transform attributes from the mesh geom XML
         geom_pos = np.zeros(3, dtype=np.float64)
-        geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # Default identity quaternion
+        geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # w, x, y, z
 
         # Get position and orientation from the mesh geom XML
         if "pos" in mesh_geom.attrib:
@@ -150,83 +149,107 @@ def make_feet_flat(
             quat_values = [float(v) for v in mesh_geom.attrib["quat"].split()]
             geom_quat[:] = quat_values  # Update values in-place
 
-        # Get rotation matrix from quaternion
-        geom_r = R.from_quat(geom_quat).as_matrix()
+        # Transform vertices into the geom's local frame (relative to the body)
+        # This frame accounts for the geom's pos and quat offset from the body origin
+        geom_rot_mat = R.from_quat(geom_quat[[1, 2, 3, 0]]).as_matrix()  # Scipy uses x, y, z, w
+        local_vertices = (geom_rot_mat @ vertices.T).T + geom_pos
 
-        # Transform vertices to mesh-local coordinates
-        local_vertices = vertices.copy()
+        # Compute axis-aligned bounding box (AABB) in this local frame
+        min_coords = local_vertices.min(axis=0)
+        max_coords = local_vertices.max(axis=0)
+        min_x, min_y, min_z = min_coords
+        max_x, max_y, max_z = max_coords
 
-        # Apply any local transform from the mesh geom
-        if np.any(geom_pos != 0) or not np.allclose(geom_quat, [1, 0, 0, 0]):
-            # Transform vertices to account for geom's local position and orientation
-            local_vertices = (geom_r @ vertices.T).T + geom_pos
+        # Define Capsule Parameters based on AABB dimensions
+        center_y = (min_y + max_y) / 2.0
+        center_z = (min_z + max_z) / 2.0
 
-        # Compute bounding box in local coordinates
-        min_x, min_y, min_z = local_vertices.min(axis=0)
-        max_x, max_y, max_z = local_vertices.max(axis=0)
+        # Dimensions of the AABB
+        dim_z = max_z - min_z  # assumed thickness
 
-        # Create box with same dimensions as original mesh bounding box
-        box_size = np.array(
-            [
-                (max_x - min_x) / 2,
-                (max_y - min_y) / 2,
-                (max_z - min_z) / 2,
-            ]
+        # Capsule radius based on thickness (Z-dimension of AABB)
+        capsule_radius = max(dim_z / 2.0, min_radius)
+
+        # Capsule axis runs along length (X-dimension of AABB)
+        axis_start_x = min_x
+        axis_end_x = max_x
+
+        y_coord = center_y
+
+        # Assume half the thickness for the capsule
+        z_offset = dim_z / 4.0
+        z_coord_lower = center_z - z_offset
+        z_coord_upper = center_z + z_offset
+
+        fromto_left = (
+            f"{axis_start_x:.6f} {y_coord:.6f} {z_coord_lower:.6f} {axis_end_x:.6f} {y_coord:.6f} {z_coord_lower:.6f}"
+        )
+        fromto_right = (
+            f"{axis_start_x:.6f} {y_coord:.6f} {z_coord_upper:.6f} {axis_end_x:.6f} {y_coord:.6f} {z_coord_upper:.6f}"
         )
 
-        # Position at center of bounding box
-        box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
-
-        # Use the original geom's orientation
-        box_quat = geom_quat
-
-        # Add a bounding box geom.
-        box_geom = ET.Element("geom")
-        box_geom.attrib["name"] = f"{mesh_geom_name}_box"
-        box_geom.attrib["type"] = "box"
-        box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
-        box_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
-        box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+        # Create left capsule
+        capsule_left = ET.Element("geom")
+        capsule_left.attrib["name"] = f"{mesh_geom_name}_capsule_left"
+        capsule_left.attrib["fromto"] = fromto_left
 
         # Copies over any other attributes from the original mesh geom.
         for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
             if key in mesh_geom.attrib:
-                box_geom.attrib[key] = mesh_geom.attrib[key]
+                capsule_left.attrib[key] = mesh_geom.attrib[key]
+        body_elem.append(capsule_left)
 
-        body_elem.append(box_geom)
+        # Create right capsule
+        capsule_right = ET.Element("geom")
+        capsule_right.attrib["name"] = f"{mesh_geom_name}_capsule_right"
+        capsule_right.attrib["fromto"] = fromto_right
 
-        # Update the visual mesh to be a box instead of creating a new one
-        # Replace the mesh with a box
+        # Copies over any other attributes from the original mesh geom.
+        for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+            if key in mesh_geom.attrib:
+                capsule_left.attrib[key] = mesh_geom.attrib[key]
+        body_elem.append(capsule_right)
+
         if found_visual_mesh:
-            visual_mesh.attrib["type"] = "box"
-            visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
-            visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
-            visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+            visual_mesh.attrib["type"] = "capsule"
+            visual_mesh.attrib["size"] = f"{capsule_radius:.6f}"
+            visual_mesh.attrib["fromto"] = fromto_left
+            visual_mesh.attrib["name"] = f"{mesh_geom_name}_capsule_left_visual"
 
-            # Remove mesh attribute as it's now a box
+            visual_mesh_right = copy.deepcopy(visual_mesh)
+            visual_mesh_right.attrib["fromto"] = fromto_right
+            visual_mesh_right.attrib["name"] = f"{mesh_geom_name}_capsule_right_visual"
+            body_elem.append(visual_mesh_right)
+            logger.info("Updated visual mesh %s to be two capsules", visual_mesh_name)
+
             if "mesh" in visual_mesh.attrib:
                 del visual_mesh.attrib["mesh"]
 
-            logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
-
-        # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
 
-    if foot_link_set:
-        raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
-
-    # Save the modified MJCF file.
     save_xml(mjcf_path, tree)
-    logger.info("Saved modified MJCF file with feet converted to boxes at %s", mjcf_path)
+    logger.info(f"Saved modified MJCF file with feet converted to capsules at {mjcf_path}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Converts MJCF feet from meshes to boxes.")
     parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
     parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot boxes.")
+    parser.add_argument(
+        "--class_name",
+        type=str,
+        default="collision",
+        help="Class name used to identify the correct mesh geom if multiple meshes exist in a link.",
+    )
+    parser.add_argument(
+        "--min_radius",
+        type=float,
+        default=0.005,
+        help="Minimum radius for the generated capsules to avoid zero-size geoms.",
+    )
     args = parser.parse_args()
 
-    make_feet_flat(args.mjcf_path, args.links)
+    add_new_feet_collision(args.mjcf_path, args.links, args.class_name, args.min_radius)
 
 
 if __name__ == "__main__":
