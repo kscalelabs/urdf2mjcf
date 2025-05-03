@@ -154,7 +154,7 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
         dim_z = max_z - min_z  # assumed thickness
 
         # Capsule radius based on thickness (Z-dimension of AABB)
-        capsule_radius = dim_z / 2.0
+        capsule_radius = dim_z / 4.0
 
         # Capsule axis runs along length (X-dimension of AABB)
         axis_start_x = min_x
@@ -176,6 +176,8 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
 
         # Create left capsule
         capsule_left = ET.Element("geom")
+        capsule_left.attrib["type"] = "capsule"
+        capsule_left.attrib["size"] = f"{capsule_radius:.6f}"
         capsule_left.attrib["name"] = f"{mesh_geom_name}_capsule_left"
         capsule_left.attrib["fromto"] = fromto_left
 
@@ -187,31 +189,36 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
 
         # Create right capsule
         capsule_right = ET.Element("geom")
+        capsule_right.attrib["type"] = "capsule"
+        capsule_right.attrib["size"] = f"{capsule_radius:.6f}"
         capsule_right.attrib["name"] = f"{mesh_geom_name}_capsule_right"
         capsule_right.attrib["fromto"] = fromto_right
 
         # Copies over any other attributes from the original mesh geom.
         for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
             if key in mesh_geom.attrib:
-                capsule_left.attrib[key] = mesh_geom.attrib[key]
+                capsule_right.attrib[key] = mesh_geom.attrib[key]
         body_elem.append(capsule_right)
 
         if found_visual_mesh:
-            visual_mesh.attrib["type"] = "capsule"
-            visual_mesh.attrib["size"] = f"{capsule_radius:.6f}"
-            visual_mesh.attrib["fromto"] = fromto_left
-            visual_mesh.attrib["name"] = f"{mesh_geom_name}_capsule_left_visual"
+            visual_mesh_left = copy.deepcopy(visual_mesh)
+            visual_mesh_left.attrib["type"] = "capsule"
+            visual_mesh_left.attrib["size"] = f"{capsule_radius:.6f}"
+            visual_mesh_left.attrib["fromto"] = fromto_left
+            visual_mesh_left.attrib["name"] = f"{mesh_geom_name}_capsule_left_visual"
 
-            visual_mesh_right = copy.deepcopy(visual_mesh)
+            if "mesh" in visual_mesh.attrib:
+                del visual_mesh_left.attrib["mesh"]
+            body_elem.append(visual_mesh_left)
+
+            visual_mesh_right = copy.deepcopy(visual_mesh_left)
             visual_mesh_right.attrib["fromto"] = fromto_right
             visual_mesh_right.attrib["name"] = f"{mesh_geom_name}_capsule_right_visual"
             body_elem.append(visual_mesh_right)
+
             logger.info("Updated visual mesh %s to be two capsules", visual_mesh_name)
 
-            if "mesh" in visual_mesh.attrib:
-                del visual_mesh.attrib["mesh"]
-
-        body_elem.remove(mesh_geom)
+        # body_elem.remove(mesh_geom)
 
     if foot_link_set:
         raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
