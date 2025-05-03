@@ -146,38 +146,43 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
         min_x, min_y, min_z = min_coords
         max_x, max_y, max_z = max_coords
 
-        # Define capsule parameters based on AABB dimensions
-        center_y = (min_y + max_y) / 2.0
-        center_z = (min_z + max_z) / 2.0
+        z_split = (min_z + max_z) / 2.0
+        left_mask = local_vertices[:, 2] <= z_split
+        right_mask = local_vertices[:, 2] > z_split
 
-        # Dimensions of the AABB
-        dim_z = max_z - min_z  # assumed thickness
+        left_vertices = local_vertices[left_mask]
+        right_vertices = local_vertices[right_mask]
 
-        # Capsule radius based on thickness (Z-dimension of AABB)
-        capsule_radius = dim_z / 4.0
+        left_min = left_vertices.min(axis=0)
+        left_max = left_vertices.max(axis=0)
+        right_min = right_vertices.min(axis=0)
+        right_max = right_vertices.max(axis=0)
 
-        # Capsule axis runs along length (X-dimension of AABB)
-        axis_start_x = min_x
-        axis_end_x = max_x
+        # Left capsule
+        left_axis_start_x = left_min[0]
+        left_axis_end_x = left_max[0]
+        left_y = (left_min[1] + left_max[1]) / 2.0
+        left_z = (left_min[2] + left_max[2]) / 2.0
+        left_radius = (left_max[2] - left_min[2]) / 2.0
 
-        y_coord = center_y
-
-        # Assume half the thickness for the capsule
-        z_offset = dim_z / 4.0
-        z_coord_lower = center_z - z_offset
-        z_coord_upper = center_z + z_offset
+        # Right capsule
+        right_axis_start_x = right_min[0]
+        right_axis_end_x = right_max[0]
+        right_y = (right_min[1] + right_max[1]) / 2.0
+        right_z = (right_min[2] + right_max[2]) / 2.0
+        right_radius = (right_max[2] - right_min[2]) / 2.0
 
         fromto_left = (
-            f"{axis_start_x:.6f} {y_coord:.6f} {z_coord_lower:.6f} {axis_end_x:.6f} {y_coord:.6f} {z_coord_lower:.6f}"
+            f"{left_axis_start_x:.6f} {left_y:.6f} {left_z:.6f} {left_axis_end_x:.6f} {left_y:.6f} {left_z:.6f}"
         )
         fromto_right = (
-            f"{axis_start_x:.6f} {y_coord:.6f} {z_coord_upper:.6f} {axis_end_x:.6f} {y_coord:.6f} {z_coord_upper:.6f}"
+            f"{right_axis_start_x:.6f} {right_y:.6f} {right_z:.6f} {right_axis_end_x:.6f} {right_y:.6f} {right_z:.6f}"
         )
 
         # Create left capsule
         capsule_left = ET.Element("geom")
         capsule_left.attrib["type"] = "capsule"
-        capsule_left.attrib["size"] = f"{capsule_radius:.6f}"
+        capsule_left.attrib["size"] = f"{left_radius:.6f}"
         capsule_left.attrib["name"] = f"{mesh_geom_name}_capsule_left"
         capsule_left.attrib["fromto"] = fromto_left
 
@@ -190,7 +195,7 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
         # Create right capsule
         capsule_right = ET.Element("geom")
         capsule_right.attrib["type"] = "capsule"
-        capsule_right.attrib["size"] = f"{capsule_radius:.6f}"
+        capsule_right.attrib["size"] = f"{right_radius:.6f}"
         capsule_right.attrib["name"] = f"{mesh_geom_name}_capsule_right"
         capsule_right.attrib["fromto"] = fromto_right
 
@@ -203,7 +208,7 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
         if found_visual_mesh:
             visual_mesh_left = copy.deepcopy(visual_mesh)
             visual_mesh_left.attrib["type"] = "capsule"
-            visual_mesh_left.attrib["size"] = f"{capsule_radius:.6f}"
+            visual_mesh_left.attrib["size"] = f"{left_radius:.6f}"
             visual_mesh_left.attrib["fromto"] = fromto_left
             visual_mesh_left.attrib["name"] = f"{mesh_geom_name}_capsule_left_visual"
 
@@ -218,7 +223,7 @@ def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], cla
 
             logger.info("Updated visual mesh %s to be two capsules", visual_mesh_name)
 
-        # body_elem.remove(mesh_geom)
+        body_elem.remove(mesh_geom)
 
     if foot_link_set:
         raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
