@@ -4,8 +4,7 @@ For each specified foot link (body), this script finds a mesh geom
 (optionally matching `class_name`). It calculates the mesh's bounding box
 in its local frame (relative to the body, considering the geom's transform).
 Based on this bounding box, it creates two capsule geoms oriented along the
-local X-axis, positioned symmetrically along the local Y-axis. The original
-mesh geom is removed.
+local X-axis, positioned symmetrically along the local Y-axis.
 """
 
 import argparse
@@ -20,18 +19,12 @@ import numpy as np
 import trimesh
 from scipy.spatial.transform import Rotation as R
 
-from urdf2mjcf.utils import save_xml  # Assuming this utility exists
+from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)  # Add basic logging configuration
 
 
-def add_new_feet_collision(
-    mjcf_path: str | Path,
-    foot_links: Sequence[str],
-    class_name: str = "collision",
-    min_radius: float = 0.005,  # Add minimum radius to avoid zero-size capsules
-) -> None:
+def add_new_feet_collision(mjcf_path: str | Path, foot_links: Sequence[str], class_name: str = "collision") -> None:
     """Replaces foot mesh geoms with two parallel capsules along the local x-axis.
 
     Args:
@@ -39,7 +32,6 @@ def add_new_feet_collision(
         foot_links: List of link (body) names containing foot meshes to process.
         class_name: The class name used to identify the collision mesh geom
             if multiple mesh geoms exist in a body.
-        min_radius: Minimum radius for the capsules to prevent zero-size geoms.
     """
     mjcf_path = Path(mjcf_path)
     tree = ET.parse(mjcf_path)
@@ -74,8 +66,6 @@ def add_new_feet_collision(
         if body_name not in foot_link_set:
             continue
         foot_link_set.remove(body_name)
-
-        mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -115,10 +105,6 @@ def add_new_feet_collision(
         if mesh_name not in mesh_name_to_path:
             logger.warning("Mesh name %s not found in <asset> element; skipping.", mesh_name)
             continue
-
-        if mesh_name not in mesh_name_to_path:
-            logger.warning("Mesh name %s not found in <asset> element; skipping.", mesh_name)
-            continue
         mesh_file = mesh_name_to_path[mesh_name]
 
         # Load the mesh using trimesh.
@@ -136,9 +122,9 @@ def add_new_feet_collision(
         # Transform the mesh vertices to world coordinates.
         vertices = mesh.vertices  # shape (n, 3)
 
-        # Get local transform attributes from the mesh geom XML
+        # find geom by name in the XML and use its attributes
         geom_pos = np.zeros(3, dtype=np.float64)
-        geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # w, x, y, z
+        geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # Default identity quaternion
 
         # Get position and orientation from the mesh geom XML
         if "pos" in mesh_geom.attrib:
@@ -160,7 +146,7 @@ def add_new_feet_collision(
         min_x, min_y, min_z = min_coords
         max_x, max_y, max_z = max_coords
 
-        # Define Capsule Parameters based on AABB dimensions
+        # Define capsule parameters based on AABB dimensions
         center_y = (min_y + max_y) / 2.0
         center_z = (min_z + max_z) / 2.0
 
@@ -168,7 +154,7 @@ def add_new_feet_collision(
         dim_z = max_z - min_z  # assumed thickness
 
         # Capsule radius based on thickness (Z-dimension of AABB)
-        capsule_radius = max(dim_z / 2.0, min_radius)
+        capsule_radius = dim_z / 2.0
 
         # Capsule axis runs along length (X-dimension of AABB)
         axis_start_x = min_x
@@ -227,6 +213,9 @@ def add_new_feet_collision(
 
         body_elem.remove(mesh_geom)
 
+    if foot_link_set:
+        raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
+
     save_xml(mjcf_path, tree)
     logger.info(f"Saved modified MJCF file with feet converted to capsules at {mjcf_path}")
 
@@ -240,12 +229,6 @@ def main() -> None:
         type=str,
         default="collision",
         help="Class name used to identify the correct mesh geom if multiple meshes exist in a link.",
-    )
-    parser.add_argument(
-        "--min_radius",
-        type=float,
-        default=0.005,
-        help="Minimum radius for the generated capsules to avoid zero-size geoms.",
     )
     args = parser.parse_args()
 

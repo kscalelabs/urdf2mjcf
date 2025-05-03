@@ -838,8 +838,8 @@ def convert_urdf_to_mjcf(
         fix_base_joint(mjcf_path, metadata.freejoint)
     if metadata.remove_redundancies:
         remove_redundancies(mjcf_path)
-    if (flat_feet_links := metadata.flat_feet_links) is not None:
-        add_new_feet_collision(mjcf_path, flat_feet_links)
+    if (feet_links := metadata.feet_links) is not None:
+        add_new_feet_collision(mjcf_path, feet_links)
     if metadata.add_floor:
         add_floor(mjcf_path, floor_name=metadata.floor_name)
     if (explicit_contacts := metadata.explicit_contacts) is not None:

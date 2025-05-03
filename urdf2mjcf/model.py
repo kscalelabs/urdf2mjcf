@@ -82,7 +82,7 @@ class ConversionMetadata(BaseModel):
         ),
     ]
     force_sensors: list[ForceSensor] = []
-    flat_feet_links: list[str] | None = None
+    feet_links: list[str] | None = None
     explicit_contacts: ExplicitFloorContacts | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
