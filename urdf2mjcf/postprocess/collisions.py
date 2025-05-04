@@ -6,12 +6,12 @@ the scene.
 """
 
 import argparse
+import itertools
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Sequence
 
-import mujoco
 import numpy as np
 import trimesh
 from scipy.spatial.transform import Rotation as R
@@ -46,18 +46,6 @@ def update_collisions(
     mesh_name_to_path = {
         mesh.attrib.get("name", mesh.attrib.get("file", "MISSING")): mesh.attrib["file"] for mesh in meshes
     }
-
-    # Load the MJCF model with Mujoco to get the proper transformations.
-    # (This will account for any joint or body-level rotations.)
-    try:
-        model_mujoco = mujoco.MjModel.from_xml_path(str(mjcf_path))
-        data = mujoco.MjData(model_mujoco)
-    except Exception as e:
-        logger.error("Failed to load MJCF in Mujoco: %s", e)
-        raise
-
-    # Run one step.
-    mujoco.mj_step(model_mujoco, data)
 
     name_to_geom = {g.name: g for g in collision_geometries}
     link_set = set(name_to_geom.keys())
@@ -155,13 +143,12 @@ def update_collisions(
             # Get the down axis in mesh-local coordinates
             down_vec = geom_r @ down_vec
 
+        # Compute bounding box in local coordinates
+        min_x, min_y, min_z = local_vertices.min(axis=0)
+        max_x, max_y, max_z = local_vertices.max(axis=0)
+
         match collision_geom.collision_type:
             case CollisionType.BOX:
-
-                # Compute bounding box in local coordinates
-                min_x, min_y, min_z = local_vertices.min(axis=0)
-                max_x, max_y, max_z = local_vertices.max(axis=0)
-
                 # Create box with same dimensions as original mesh bounding box
                 box_size = np.array(
                     [
@@ -206,60 +193,36 @@ def update_collisions(
 
                     logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
 
-            case CollisionType.PARALLEL_LONG_CAPSULES:
+            case CollisionType.PARALLEL_CAPSULES:
                 sphere_radius = collision_geom.sphere_radius
+                ax = collision_geom.axis_order
+                flip_axis = collision_geom.flip_axis
 
-                # Compute bounding box in local coordinates
-                min_x, min_y, min_z = local_vertices.min(axis=0)
-                max_x, max_y, max_z = local_vertices.max(axis=0)
+                pairs = [(min_x, max_x), (min_y, max_y), (min_z, max_z)]
 
                 # Determine which direction is the longest
-                lengths = np.array(
-                    [
-                        max_x - min_x,  # x length
-                        max_y - min_y,  # y length
-                        max_z - min_z,  # z length
-                    ]
-                )
-                down_axis = np.argmax(np.abs(down_vec))
-                lengths[down_axis] = 0.0
-                longest_axis = np.argmax(lengths)
-                other_axes = [i for i in range(3) if i not in (longest_axis, down_axis)]
-                other_axis = other_axes[0]
+                length = [max_x - min_x, max_y - min_y, max_z - min_z][ax[0]]
 
-                min_v = [min_x, min_y, min_z][longest_axis]
-                max_v = [max_x, max_y, max_z][longest_axis]
+                # Use the original geom's orientation
+                sphere_quat = geom_quat
 
-                breakpoint()
-
-                # Get the points within sphere_radius * 2 of each edge
-                # along the longest axis
-                min_edge_points = local_vertices[local_vertices[:, longest_axis] <= (min_v + sphere_radius * 2)]
-                max_edge_points = local_vertices[local_vertices[:, longest_axis] >= (max_v - sphere_radius * 2)]
-
-                # Get the min and max points in the other axes for each set
-                min_edge_min = min_edge_points[:, other_axis].min(axis=0)
-                min_edge_max = min_edge_points[:, other_axis].max(axis=0)
-                max_edge_min = max_edge_points[:, other_axis].min(axis=0)
-                max_edge_max = max_edge_points[:, other_axis].max(axis=0)
-
-                # Create two capsules - one for each edge
-                for i, (edge_min, edge_max) in enumerate([(min_edge_min, min_edge_max), (max_edge_min, max_edge_max)]):
-                    # Calculate the center point of the capsule
-                    center = np.zeros(3)
-                    center[longest_axis] = min_v + sphere_radius if i == 0 else max_v - sphere_radius
-                    center[other_axis] = (edge_min + edge_max) / 2
-                    center[down_axis] = 0.0
-
-                    # Calculate the length of the capsule
-                    length = np.sqrt(np.sum((edge_max - edge_min) ** 2))
+                for i, min_side in enumerate((True, False)):
+                    capsule_fromto = np.zeros(6, dtype=np.float64)
+                    capsule_fromto[ax[0]] = pairs[ax[0]][0] + sphere_radius
+                    capsule_fromto[ax[0] + 3] = pairs[ax[0]][1] - sphere_radius
+                    val_1 = pairs[ax[1]][0] + sphere_radius if min_side else pairs[ax[1]][1] - sphere_radius
+                    capsule_fromto[ax[1]] = val_1
+                    capsule_fromto[ax[1] + 3] = val_1
+                    val_2 = pairs[ax[2]][0] + sphere_radius if flip_axis else pairs[ax[2]][1] - sphere_radius
+                    capsule_fromto[ax[2]] = val_2
+                    capsule_fromto[ax[2] + 3] = val_2
 
                     # Create the capsule geom
                     capsule_geom = ET.Element("geom")
                     capsule_geom.attrib["name"] = f"{mesh_geom_name}_capsule_{i}"
                     capsule_geom.attrib["type"] = "capsule"
-                    capsule_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in center)
-                    capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in geom_quat)
+                    capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                    capsule_geom.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
                     capsule_geom.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
 
                     # Copy over any other attributes from the original mesh geom
@@ -274,8 +237,8 @@ def update_collisions(
                         visual_capsule = ET.Element("geom")
                         visual_capsule.attrib["name"] = f"{visual_mesh_name}_capsule_{i}"
                         visual_capsule.attrib["type"] = "capsule"
-                        visual_capsule.attrib["pos"] = " ".join(f"{v:.6f}" for v in center)
-                        visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in geom_quat)
+                        visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                        visual_capsule.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
                         visual_capsule.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
 
                         # Copy over material and class attributes
@@ -285,7 +248,67 @@ def update_collisions(
 
                         body_elem.append(visual_capsule)
 
-                    logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
+                if found_visual_mesh:
+                    body_elem.remove(visual_mesh)
+
+                logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
+
+            case CollisionType.SPHERES:
+                sphere_radius = collision_geom.sphere_radius
+                ax = collision_geom.axis_order
+                flip_axis = collision_geom.flip_axis
+
+                pairs = [(min_x, max_x), (min_y, max_y), (min_z, max_z)]
+
+                # Use the original geom's orientation
+                sphere_quat = geom_quat
+
+                for i, (min_x, min_y) in enumerate(itertools.product((True, False), (True, False))):
+                    x = pairs[ax[0]][0] + sphere_radius if min_x else pairs[ax[0]][1] - sphere_radius
+                    y = pairs[ax[1]][0] + sphere_radius if min_y else pairs[ax[1]][1] - sphere_radius
+                    z = pairs[ax[2]][0] + sphere_radius if flip_axis else pairs[ax[2]][1] - sphere_radius
+
+                    xyz = [0, 0, 0]
+                    xyz[ax[0]] = x
+                    xyz[ax[1]] = y
+                    xyz[ax[2]] = z
+                    x, y, z = xyz
+
+                    # Create the capsule geom
+                    sphere_geom = ET.Element("geom")
+                    sphere_geom.attrib["name"] = f"{mesh_geom_name}_sphere_{i}"
+                    sphere_geom.attrib["type"] = "sphere"
+                    sphere_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                    sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in (x, y, z))
+                    sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
+
+                    # Copy over any other attributes from the original mesh geom
+                    for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                        if key in mesh_geom.attrib:
+                            sphere_geom.attrib[key] = mesh_geom.attrib[key]
+
+                    body_elem.append(sphere_geom)
+
+                    # Update the visual mesh to be capsules instead of creating new ones
+                    if found_visual_mesh:
+                        visual_sphere = ET.Element("geom")
+                        visual_sphere.attrib["name"] = f"{visual_mesh_name}_sphere_{i}"
+                        visual_sphere.attrib["type"] = "sphere"
+                        visual_sphere.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                        visual_sphere.attrib["pos"] = " ".join(f"{v:.6f}" for v in (x, y, z))
+                        visual_sphere.attrib["size"] = f"{sphere_radius:.6f}"
+
+                        # Copy over material and class attributes
+                        for key in ("material", "class"):
+                            if key in visual_mesh.attrib:
+                                visual_sphere.attrib[key] = visual_mesh.attrib[key]
+
+                        body_elem.append(visual_sphere)
+
+                if found_visual_mesh:
+                    body_elem.remove(visual_mesh)
+
+                logger.info("Updated visual mesh %s to be spheres", visual_mesh_name)
 
             case _:
                 raise NotImplementedError(f"Collision type {collision_geom.collision_type} not implemented.")

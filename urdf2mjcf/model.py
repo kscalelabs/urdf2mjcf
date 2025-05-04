@@ -63,13 +63,16 @@ class ExplicitFloorContacts(BaseModel):
 
 class CollisionType(enum.Enum):
     BOX = enum.auto()
-    PARALLEL_LONG_CAPSULES = enum.auto()
+    PARALLEL_CAPSULES = enum.auto()
+    SPHERES = enum.auto()
 
 
 class CollisionGeometry(BaseModel):
     name: str
     collision_type: CollisionType
     sphere_radius: float = 0.01
+    axis_order: tuple[int, int, int] = (0, 1, 2)
+    flip_axis: bool = False
 
 
 class ConversionMetadata(BaseModel):
