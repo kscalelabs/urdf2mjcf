@@ -56,7 +56,7 @@ def update_collisions(
         if body_name not in link_set:
             continue
         link_set.remove(body_name)
-        collision_geom = name_to_geom[body_name]
+        collision_geom_info = name_to_geom[body_name]
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -147,7 +147,7 @@ def update_collisions(
         min_x, min_y, min_z = local_vertices.min(axis=0)
         max_x, max_y, max_z = local_vertices.max(axis=0)
 
-        match collision_geom.collision_type:
+        match collision_geom_info.collision_type:
             case CollisionType.BOX:
                 # Create box with same dimensions as original mesh bounding box
                 box_size = np.array(
@@ -194,9 +194,9 @@ def update_collisions(
                     logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
 
             case CollisionType.PARALLEL_CAPSULES:
-                sphere_radius = collision_geom.sphere_radius
-                ax = collision_geom.axis_order
-                flip_axis = collision_geom.flip_axis
+                sphere_radius = collision_geom_info.sphere_radius
+                ax = collision_geom_info.axis_order
+                flip_axis = collision_geom_info.flip_axis
 
                 pairs = [(min_x, max_x), (min_y, max_y), (min_z, max_z)]
 
@@ -254,9 +254,9 @@ def update_collisions(
                 logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
 
             case CollisionType.SPHERES:
-                sphere_radius = collision_geom.sphere_radius
-                ax = collision_geom.axis_order
-                flip_axis = collision_geom.flip_axis
+                sphere_radius = collision_geom_info.sphere_radius
+                ax = collision_geom_info.axis_order
+                flip_axis = collision_geom_info.flip_axis
 
                 pairs = [(min_x, max_x), (min_y, max_y), (min_z, max_z)]
 
@@ -311,7 +311,7 @@ def update_collisions(
                 logger.info("Updated visual mesh %s to be spheres", visual_mesh_name)
 
             case _:
-                raise NotImplementedError(f"Collision type {collision_geom.collision_type} not implemented.")
+                raise NotImplementedError(f"Collision type {collision_geom_info.collision_type} not implemented.")
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
