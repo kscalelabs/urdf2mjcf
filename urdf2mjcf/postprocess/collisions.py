@@ -1,14 +1,8 @@
-"""Converts the feet of an MJCF model into spheres.
+"""Converts some mesh geometries into easier-to-collide shapes.
 
-For each specified foot link (which is assumed to contain a mesh geom),
-this script loads the MJCF both with XML (for modification) and with Mujoco
-(for computing the correct transformation of the mesh geometry). For each
-foot link, it loads the mesh file, applies the transform computed by Mujoco
-(i.e. the combined effect of any joint, body, and geom transformations),
-computes the axis-aligned bounding box in world coordinates, finds the bottom
-four corners of that bounding box (with the provided sphere radius), converts
-these points into the body-local coordinates, creates sphere geoms at each
-location, and finally removes the original mesh geom.
+For frameworks like MJX, it is usually a good idea to model some of the links
+as simpler shapes, since it is more robust to collide them with other links in
+the scene.
 """
 
 import argparse
@@ -22,30 +16,22 @@ import numpy as np
 import trimesh
 from scipy.spatial.transform import Rotation as R
 
+from urdf2mjcf.model import CollisionGeometry, CollisionType
 from urdf2mjcf.utils import save_xml
 
 logger = logging.getLogger(__name__)
 
 
-def make_feet_flat(
+def update_collisions(
     mjcf_path: str | Path,
-    foot_links: Sequence[str],
+    collision_geometries: Sequence[CollisionGeometry],
     class_name: str = "collision",
 ) -> None:
-    """Converts the feet of an MJCF model into spheres using Mujoco.
-
-    For each specified foot link, this function loads the MJCF file both as an
-    XML tree (for later writing) and as a Mujoco model to obtain the correct
-    (world) transformation for the mesh geom. It then loads the mesh file,
-    transforms its vertices using Mujoco's computed geom transform, computes
-    its axis-aligned bounding box in world coordinates, extracts the bottom
-    four corners (with z-coordinate at the minimum), converts these positions
-    into the body-local frame, creates sphere geoms at those locations (with
-    the provided sphere radius), and finally removes the original mesh geom.
+    """Converts some mesh geometries into easier-to-collide shapes.
 
     Args:
         mjcf_path: Path to the MJCF file.
-        foot_links: List of link (body) names to process.
+        collision_geometries: List of collision geometries to process.
         class_name: The class name to use for the sphere geoms.
     """
     mjcf_path = Path(mjcf_path)
@@ -73,14 +59,15 @@ def make_feet_flat(
     # Run one step.
     mujoco.mj_step(model_mujoco, data)
 
-    foot_link_set = set(foot_links)
+    name_to_geom = {g.name: g for g in collision_geometries}
+    link_set = set(name_to_geom.keys())
 
     # Iterate over all <body> elements and process those in foot_links.
     for body_elem in root.iter("body"):
         body_name = body_elem.attrib.get("name", "")
-        if body_name not in foot_link_set:
+        if body_name not in link_set:
             continue
-        foot_link_set.remove(body_name)
+        link_set.remove(body_name)
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -212,8 +199,8 @@ def make_feet_flat(
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
 
-    if foot_link_set:
-        raise ValueError(f"Found {len(foot_link_set)} foot links that were not found in the MJCF file: {foot_link_set}")
+    if link_set:
+        raise ValueError(f"Found {len(link_set)} collision geometries that were not found in the MJCF file: {link_set}")
 
     # Save the modified MJCF file.
     save_xml(mjcf_path, tree)
@@ -221,12 +208,13 @@ def make_feet_flat(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Converts MJCF feet from meshes to boxes.")
+    parser = argparse.ArgumentParser(description="Converts MJCF collision geometries from meshes to boxes.")
     parser.add_argument("mjcf_path", type=Path, help="Path to the MJCF file.")
-    parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert into foot boxes.")
+    parser.add_argument("--links", nargs="+", required=True, help="List of link names to convert.")
     args = parser.parse_args()
 
-    make_feet_flat(args.mjcf_path, args.links)
+    collision_geometries = [CollisionGeometry(name=name, collision_type=CollisionType.BOX) for name in args.links]
+    update_collisions(args.mjcf_path, collision_geometries)
 
 
 if __name__ == "__main__":

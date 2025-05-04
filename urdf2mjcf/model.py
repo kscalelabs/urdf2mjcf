@@ -1,5 +1,6 @@
 """Defines the Pydantic model for the URDF to MJCF conversion."""
 
+import enum
 from typing import Literal
 
 from pydantic import BaseModel
@@ -60,6 +61,16 @@ class ExplicitFloorContacts(BaseModel):
     class_name: str = "collision"
 
 
+class CollisionType(enum.Enum):
+    BOX = enum.auto()
+    PARALLEL_LONG_CAPSULES = enum.auto()
+
+
+class CollisionGeometry(BaseModel):
+    name: str
+    collision_type: CollisionType
+
+
 class ConversionMetadata(BaseModel):
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
@@ -82,7 +93,7 @@ class ConversionMetadata(BaseModel):
         ),
     ]
     force_sensors: list[ForceSensor] = []
-    flat_feet_links: list[str] | None = None
+    collision_geometries: list[CollisionGeometry] | None = None
     explicit_contacts: ExplicitFloorContacts | None = None
     remove_redundancies: bool = True
     floating_base: bool = True
