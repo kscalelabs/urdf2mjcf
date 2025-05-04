@@ -68,6 +68,7 @@ def update_collisions(
         if body_name not in link_set:
             continue
         link_set.remove(body_name)
+        collision_geom = name_to_geom[body_name]
 
         # Find the mesh geom in the body, disambiguating by class if necessary.
         mesh_geoms = [geom for geom in body_elem.findall("geom") if geom.attrib.get("type", "").lower() == "mesh"]
@@ -148,53 +149,62 @@ def update_collisions(
             # Transform vertices to account for geom's local position and orientation
             local_vertices = (geom_r @ vertices.T).T + geom_pos
 
-        # Compute bounding box in local coordinates
-        min_x, min_y, min_z = local_vertices.min(axis=0)
-        max_x, max_y, max_z = local_vertices.max(axis=0)
+        match collision_geom.collision_type:
+            case CollisionType.BOX:
 
-        # Create box with same dimensions as original mesh bounding box
-        box_size = np.array(
-            [
-                (max_x - min_x) / 2,
-                (max_y - min_y) / 2,
-                (max_z - min_z) / 2,
-            ]
-        )
+                # Compute bounding box in local coordinates
+                min_x, min_y, min_z = local_vertices.min(axis=0)
+                max_x, max_y, max_z = local_vertices.max(axis=0)
 
-        # Position at center of bounding box
-        box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
+                # Create box with same dimensions as original mesh bounding box
+                box_size = np.array(
+                    [
+                        (max_x - min_x) / 2,
+                        (max_y - min_y) / 2,
+                        (max_z - min_z) / 2,
+                    ]
+                )
 
-        # Use the original geom's orientation
-        box_quat = geom_quat
+                # Position at center of bounding box
+                box_pos = np.array([(max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2])
 
-        # Add a bounding box geom.
-        box_geom = ET.Element("geom")
-        box_geom.attrib["name"] = f"{mesh_geom_name}_box"
-        box_geom.attrib["type"] = "box"
-        box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
-        box_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
-        box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+                # Use the original geom's orientation
+                box_quat = geom_quat
 
-        # Copies over any other attributes from the original mesh geom.
-        for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
-            if key in mesh_geom.attrib:
-                box_geom.attrib[key] = mesh_geom.attrib[key]
+                # Add a bounding box geom.
+                box_geom = ET.Element("geom")
+                box_geom.attrib["name"] = f"{mesh_geom_name}_box"
+                box_geom.attrib["type"] = "box"
+                box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+                box_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
+                box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
 
-        body_elem.append(box_geom)
+                # Copies over any other attributes from the original mesh geom.
+                for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                    if key in mesh_geom.attrib:
+                        box_geom.attrib[key] = mesh_geom.attrib[key]
 
-        # Update the visual mesh to be a box instead of creating a new one
-        # Replace the mesh with a box
-        if found_visual_mesh:
-            visual_mesh.attrib["type"] = "box"
-            visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
-            visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
-            visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+                body_elem.append(box_geom)
 
-            # Remove mesh attribute as it's now a box
-            if "mesh" in visual_mesh.attrib:
-                del visual_mesh.attrib["mesh"]
+                # Update the visual mesh to be a box instead of creating a new one
+                # Replace the mesh with a box
+                if found_visual_mesh:
+                    visual_mesh.attrib["type"] = "box"
+                    visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
+                    visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
+                    visual_mesh.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
 
-            logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
+                    # Remove mesh attribute as it's now a box
+                    if "mesh" in visual_mesh.attrib:
+                        del visual_mesh.attrib["mesh"]
+
+                    logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
+
+            case CollisionType.PARALLEL_LONG_CAPSULES:
+                raise NotImplementedError("Parallel long capsules not implemented.")
+
+            case _:
+                raise NotImplementedError(f"Collision type {collision_geom.collision_type} not implemented.")
 
         # Remove the original mesh geom from the body.
         body_elem.remove(mesh_geom)
