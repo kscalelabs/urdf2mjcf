@@ -194,7 +194,7 @@ def update_collisions(
                     logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
 
             case CollisionType.PARALLEL_CAPSULES:
-                sphere_radius = collision_geom_info.sphere_radius
+                rad = collision_geom_info.sphere_radius
                 ax = collision_geom_info.axis_order
                 flip_axis = collision_geom_info.flip_axis
 
@@ -208,12 +208,12 @@ def update_collisions(
 
                 for i, min_side in enumerate((True, False)):
                     capsule_fromto = np.zeros(6, dtype=np.float64)
-                    capsule_fromto[ax[0]] = pairs[ax[0]][0] + sphere_radius
-                    capsule_fromto[ax[0] + 3] = pairs[ax[0]][1] - sphere_radius
-                    val_1 = pairs[ax[1]][0] + sphere_radius if min_side else pairs[ax[1]][1] - sphere_radius
+                    capsule_fromto[ax[0]] = pairs[ax[0]][0] + rad
+                    capsule_fromto[ax[0] + 3] = pairs[ax[0]][1] - rad
+                    val_1 = pairs[ax[1]][0] + rad if min_side else pairs[ax[1]][1] - rad
                     capsule_fromto[ax[1]] = val_1
                     capsule_fromto[ax[1] + 3] = val_1
-                    val_2 = pairs[ax[2]][0] + sphere_radius if flip_axis else pairs[ax[2]][1] - sphere_radius
+                    val_2 = pairs[ax[2]][0] + rad if flip_axis else pairs[ax[2]][1] - rad
                     capsule_fromto[ax[2]] = val_2
                     capsule_fromto[ax[2] + 3] = val_2
 
@@ -223,7 +223,7 @@ def update_collisions(
                     capsule_geom.attrib["type"] = "capsule"
                     capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                     capsule_geom.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                    capsule_geom.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
+                    capsule_geom.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
 
                     # Copy over any other attributes from the original mesh geom
                     for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
@@ -239,7 +239,7 @@ def update_collisions(
                         visual_capsule.attrib["type"] = "capsule"
                         visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                         visual_capsule.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                        visual_capsule.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
+                        visual_capsule.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
 
                         # Copy over material and class attributes
                         for key in ("material", "class"):
@@ -250,11 +250,10 @@ def update_collisions(
 
                 if visual_mesh is not None:
                     body_elem.remove(visual_mesh)
+                    logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
 
-                logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
-
-            case CollisionType.SPHERES:
-                sphere_radius = collision_geom_info.sphere_radius
+            case CollisionType.CORNER_SPHERES:
+                rad = collision_geom_info.sphere_radius
                 ax = collision_geom_info.axis_order
                 flip_axis = collision_geom_info.flip_axis
 
@@ -264,9 +263,9 @@ def update_collisions(
                 sphere_quat = geom_quat
 
                 for i, (min_x, min_y) in enumerate(itertools.product((True, False), (True, False))):
-                    x = pairs[ax[0]][0] + sphere_radius if min_x else pairs[ax[0]][1] - sphere_radius
-                    y = pairs[ax[1]][0] + sphere_radius if min_y else pairs[ax[1]][1] - sphere_radius
-                    z = pairs[ax[2]][0] + sphere_radius if flip_axis else pairs[ax[2]][1] - sphere_radius
+                    x = pairs[ax[0]][0] + rad if min_x else pairs[ax[0]][1] - rad
+                    y = pairs[ax[1]][0] + rad if min_y else pairs[ax[1]][1] - rad
+                    z = pairs[ax[2]][0] + rad if flip_axis else pairs[ax[2]][1] - rad
 
                     xyz = [0, 0, 0]
                     xyz[ax[0]] = x
@@ -280,7 +279,7 @@ def update_collisions(
                     sphere_geom.attrib["type"] = "sphere"
                     sphere_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                     sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in (x, y, z))
-                    sphere_geom.attrib["size"] = f"{sphere_radius:.6f}"
+                    sphere_geom.attrib["size"] = f"{rad:.6f}"
 
                     # Copy over any other attributes from the original mesh geom
                     for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
@@ -296,7 +295,7 @@ def update_collisions(
                         visual_sphere.attrib["type"] = "sphere"
                         visual_sphere.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                         visual_sphere.attrib["pos"] = " ".join(f"{v:.6f}" for v in (x, y, z))
-                        visual_sphere.attrib["size"] = f"{sphere_radius:.6f}"
+                        visual_sphere.attrib["size"] = f"{rad:.6f}"
 
                         # Copy over material and class attributes
                         for key in ("material", "class"):
@@ -307,8 +306,40 @@ def update_collisions(
 
                 if visual_mesh is not None:
                     body_elem.remove(visual_mesh)
+                    logger.info("Updated visual mesh %s to be corner spheres", visual_mesh_name)
 
-                logger.info("Updated visual mesh %s to be spheres", visual_mesh_name)
+            case CollisionType.SINGLE_SPHERE:
+                rad = collision_geom_info.sphere_radius
+                ax = collision_geom_info.axis_order
+                flip_axis = collision_geom_info.flip_axis
+                pairs = [(min_x, max_x), (min_y, max_y), (min_z, max_z)]
+
+                min_v, max_v = pairs[ax[2]]
+                pairs[ax[2]] = (min_v + rad, min_v + rad) if flip_axis else (max_v - rad, max_v - rad)
+
+                sphere_pos = np.array([sum(pairs[0]) / 2, sum(pairs[1]) / 2, sum(pairs[2]) / 2])
+                sphere_quat = geom_quat
+
+                sphere_geom = ET.Element("geom")
+                sphere_geom.attrib["name"] = f"{mesh_geom_name}_sphere"
+                sphere_geom.attrib["type"] = "sphere"
+                sphere_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in sphere_pos)
+                sphere_geom.attrib["size"] = f"{rad:.6f}"
+
+                body_elem.append(sphere_geom)
+
+                if visual_mesh is not None:
+                    visual_mesh.attrib["type"] = "sphere"
+                    visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in sphere_pos)
+                    visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
+                    visual_mesh.attrib["size"] = f"{rad:.6f}"
+
+                    # Remove mesh attribute as it's now a sphere
+                    if "mesh" in visual_mesh.attrib:
+                        del visual_mesh.attrib["mesh"]
+
+                    logger.info("Updated visual mesh %s to be a single sphere", visual_mesh_name)
 
             case _:
                 raise NotImplementedError(f"Collision type {collision_geom_info.collision_type} not implemented.")

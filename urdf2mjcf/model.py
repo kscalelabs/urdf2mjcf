@@ -64,7 +64,8 @@ class ExplicitFloorContacts(BaseModel):
 class CollisionType(enum.Enum):
     BOX = enum.auto()
     PARALLEL_CAPSULES = enum.auto()
-    SPHERES = enum.auto()
+    CORNER_SPHERES = enum.auto()
+    SINGLE_SPHERE = enum.auto()
 
 
 class CollisionGeometry(BaseModel):
