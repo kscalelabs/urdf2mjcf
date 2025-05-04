@@ -69,6 +69,7 @@ class CollisionType(enum.Enum):
 class CollisionGeometry(BaseModel):
     name: str
     collision_type: CollisionType
+    sphere_radius: float = 0.01
 
 
 class ConversionMetadata(BaseModel):

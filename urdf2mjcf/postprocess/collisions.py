@@ -201,7 +201,90 @@ def update_collisions(
                     logger.info("Updated visual mesh %s to be a box", visual_mesh_name)
 
             case CollisionType.PARALLEL_LONG_CAPSULES:
-                raise NotImplementedError("Parallel long capsules not implemented.")
+                sphere_radius = collision_geom.sphere_radius
+
+                # Compute bounding box in local coordinates
+                min_x, min_y, min_z = local_vertices.min(axis=0)
+                max_x, max_y, max_z = local_vertices.max(axis=0)
+
+                # Determine which direction is the longest
+                lengths = np.array(
+                    [
+                        max_x - min_x,  # x length
+                        max_y - min_y,  # y length
+                        max_z - min_z,  # z length
+                    ]
+                )
+                longest_axis = np.argmax(lengths)
+                other_axes = [i for i in range(3) if i != longest_axis]
+
+                # Get the points within sphere_radius * 2 of each edge
+                # along the longest axis
+                min_edge_points = local_vertices[local_vertices[:, longest_axis] <= min_x + sphere_radius * 2]
+                max_edge_points = local_vertices[local_vertices[:, longest_axis] >= max_x - sphere_radius * 2]
+
+                # Get the min and max points in the other axes for each set
+                min_edge_min = min_edge_points[:, other_axes].min(axis=0)
+                min_edge_max = min_edge_points[:, other_axes].max(axis=0)
+                max_edge_min = max_edge_points[:, other_axes].min(axis=0)
+                max_edge_max = max_edge_points[:, other_axes].max(axis=0)
+
+                # Create two capsules - one for each edge
+                for i, (edge_min, edge_max) in enumerate([(min_edge_min, min_edge_max), (max_edge_min, max_edge_max)]):
+                    # Calculate the center point of the capsule
+                    center = np.zeros(3)
+                    center[longest_axis] = min_x if i == 0 else max_x
+                    center[other_axes[0]] = (edge_min[0] + edge_max[0]) / 2
+                    center[other_axes[1]] = (edge_min[1] + edge_max[1]) / 2
+
+                    # Calculate the length of the capsule
+                    length = np.sqrt(np.sum((edge_max - edge_min) ** 2))
+
+                    # Create the capsule geom
+                    capsule_geom = ET.Element("geom")
+                    capsule_geom.attrib["name"] = f"{mesh_geom_name}_capsule_{i}"
+                    capsule_geom.attrib["type"] = "capsule"
+                    capsule_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in center)
+                    capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in geom_quat)
+                    capsule_geom.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
+
+                    # Copy over any other attributes from the original mesh geom
+                    for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                        if key in mesh_geom.attrib:
+                            capsule_geom.attrib[key] = mesh_geom.attrib[key]
+
+                    body_elem.append(capsule_geom)
+
+                # Update the visual mesh to be capsules instead of creating new ones
+                if found_visual_mesh:
+                    # Remove the original visual mesh
+                    body_elem.remove(visual_mesh)
+
+                    # Create two visual capsules
+                    for i, (edge_min, edge_max) in enumerate(
+                        [(min_edge_min, min_edge_max), (max_edge_min, max_edge_max)]
+                    ):
+                        center = np.zeros(3)
+                        center[longest_axis] = min_x if i == 0 else max_x
+                        center[other_axes[0]] = (edge_min[0] + edge_max[0]) / 2
+                        center[other_axes[1]] = (edge_min[1] + edge_max[1]) / 2
+                        length = np.sqrt(np.sum((edge_max - edge_min) ** 2))
+
+                        visual_capsule = ET.Element("geom")
+                        visual_capsule.attrib["name"] = f"{visual_mesh_name}_capsule_{i}"
+                        visual_capsule.attrib["type"] = "capsule"
+                        visual_capsule.attrib["pos"] = " ".join(f"{v:.6f}" for v in center)
+                        visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in geom_quat)
+                        visual_capsule.attrib["size"] = f"{sphere_radius:.6f} {length/2:.6f}"
+
+                        # Copy over material and class attributes
+                        for key in ("material", "class"):
+                            if key in visual_mesh.attrib:
+                                visual_capsule.attrib[key] = visual_mesh.attrib[key]
+
+                        body_elem.append(visual_capsule)
+
+                    logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
 
             case _:
                 raise NotImplementedError(f"Collision type {collision_geom.collision_type} not implemented.")
