@@ -117,9 +117,6 @@ def update_collisions(
         geom_pos = np.zeros(3, dtype=np.float64)
         geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # Default identity quaternion
 
-        # Keeps track of which direction is down.
-        down_vec = np.array([0.0, 0.0, 1.0])
-
         # Get position and orientation from the mesh geom XML
         if "pos" in mesh_geom.attrib:
             pos_values = [float(v) for v in mesh_geom.attrib["pos"].split()]
@@ -130,18 +127,13 @@ def update_collisions(
             geom_quat[:] = quat_values  # Update values in-place
 
         # Get rotation matrix from quaternion
-        geom_r = R.from_quat(geom_quat).as_matrix()
+        geom_r = R.from_quat(geom_quat, scalar_first=True)
 
         # Transform vertices to mesh-local coordinates
         local_vertices = vertices.copy()
 
-        # Apply any local transform from the mesh geom
-        if np.any(geom_pos != 0) or not np.allclose(geom_quat, [1, 0, 0, 0]):
-            # Transform vertices to account for geom's local position and orientation
-            local_vertices = (geom_r @ vertices.T).T + geom_pos
-
-            # Get the down axis in mesh-local coordinates
-            down_vec = geom_r @ down_vec
+        # Transform vertices to account for geom's local position and orientation
+        local_vertices = geom_r.apply(vertices) + geom_pos
 
         # Compute bounding box in local coordinates
         min_x, min_y, min_z = local_vertices.min(axis=0)
