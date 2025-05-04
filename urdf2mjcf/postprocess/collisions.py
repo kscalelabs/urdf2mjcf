@@ -199,12 +199,21 @@ def update_collisions(
                 sphere_quat = geom_quat
 
                 for i, min_side in enumerate((True, False)):
+                    min_s, max_s = pairs[ax[1]]
+                    range_s = (min_s, min_s + rad * 2) if min_side else (max_s - rad * 2, max_s)
+
+                    mask = (local_vertices[:, ax[1]] >= range_s[0]) & (local_vertices[:, ax[1]] <= range_s[1])
+                    min_v = np.min(local_vertices[mask, ax[0]])
+                    max_v = np.max(local_vertices[mask, ax[0]])
+
                     capsule_fromto = np.zeros(6, dtype=np.float64)
-                    capsule_fromto[ax[0]] = pairs[ax[0]][0] + rad
-                    capsule_fromto[ax[0] + 3] = pairs[ax[0]][1] - rad
+                    capsule_fromto[ax[0]] = min_v + rad
+                    capsule_fromto[ax[0] + 3] = max_v - rad
+
                     val_1 = pairs[ax[1]][0] + rad if min_side else pairs[ax[1]][1] - rad
                     capsule_fromto[ax[1]] = val_1
                     capsule_fromto[ax[1] + 3] = val_1
+
                     val_2 = pairs[ax[2]][0] + rad if flip_axis else pairs[ax[2]][1] - rad
                     capsule_fromto[ax[2]] = val_2
                     capsule_fromto[ax[2] + 3] = val_2
