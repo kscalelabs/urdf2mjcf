@@ -125,9 +125,12 @@ def update_collisions(
         # Transform the mesh vertices to world coordinates.
         vertices = mesh.vertices  # shape (n,3)
 
-        # find geom by name in the XML and use its attributes
+        # Find geom by name in the XML and use its attributes
         geom_pos = np.zeros(3, dtype=np.float64)
         geom_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)  # Default identity quaternion
+
+        # Keeps track of which direction is down.
+        down_vec = np.array([0.0, 0.0, 1.0])
 
         # Get position and orientation from the mesh geom XML
         if "pos" in mesh_geom.attrib:
@@ -148,6 +151,9 @@ def update_collisions(
         if np.any(geom_pos != 0) or not np.allclose(geom_quat, [1, 0, 0, 0]):
             # Transform vertices to account for geom's local position and orientation
             local_vertices = (geom_r @ vertices.T).T + geom_pos
+
+            # Get the down axis in mesh-local coordinates
+            down_vec = geom_r @ down_vec
 
         match collision_geom.collision_type:
             case CollisionType.BOX:
@@ -215,27 +221,35 @@ def update_collisions(
                         max_z - min_z,  # z length
                     ]
                 )
+                down_axis = np.argmax(np.abs(down_vec))
+                lengths[down_axis] = 0.0
                 longest_axis = np.argmax(lengths)
-                other_axes = [i for i in range(3) if i != longest_axis]
+                other_axes = [i for i in range(3) if i not in (longest_axis, down_axis)]
+                other_axis = other_axes[0]
+
+                min_v = [min_x, min_y, min_z][longest_axis]
+                max_v = [max_x, max_y, max_z][longest_axis]
+
+                breakpoint()
 
                 # Get the points within sphere_radius * 2 of each edge
                 # along the longest axis
-                min_edge_points = local_vertices[local_vertices[:, longest_axis] <= min_x + sphere_radius * 2]
-                max_edge_points = local_vertices[local_vertices[:, longest_axis] >= max_x - sphere_radius * 2]
+                min_edge_points = local_vertices[local_vertices[:, longest_axis] <= (min_v + sphere_radius * 2)]
+                max_edge_points = local_vertices[local_vertices[:, longest_axis] >= (max_v - sphere_radius * 2)]
 
                 # Get the min and max points in the other axes for each set
-                min_edge_min = min_edge_points[:, other_axes].min(axis=0)
-                min_edge_max = min_edge_points[:, other_axes].max(axis=0)
-                max_edge_min = max_edge_points[:, other_axes].min(axis=0)
-                max_edge_max = max_edge_points[:, other_axes].max(axis=0)
+                min_edge_min = min_edge_points[:, other_axis].min(axis=0)
+                min_edge_max = min_edge_points[:, other_axis].max(axis=0)
+                max_edge_min = max_edge_points[:, other_axis].min(axis=0)
+                max_edge_max = max_edge_points[:, other_axis].max(axis=0)
 
                 # Create two capsules - one for each edge
                 for i, (edge_min, edge_max) in enumerate([(min_edge_min, min_edge_max), (max_edge_min, max_edge_max)]):
                     # Calculate the center point of the capsule
                     center = np.zeros(3)
-                    center[longest_axis] = min_x if i == 0 else max_x
-                    center[other_axes[0]] = (edge_min[0] + edge_max[0]) / 2
-                    center[other_axes[1]] = (edge_min[1] + edge_max[1]) / 2
+                    center[longest_axis] = min_v + sphere_radius if i == 0 else max_v - sphere_radius
+                    center[other_axis] = (edge_min + edge_max) / 2
+                    center[down_axis] = 0.0
 
                     # Calculate the length of the capsule
                     length = np.sqrt(np.sum((edge_max - edge_min) ** 2))
@@ -255,21 +269,8 @@ def update_collisions(
 
                     body_elem.append(capsule_geom)
 
-                # Update the visual mesh to be capsules instead of creating new ones
-                if found_visual_mesh:
-                    # Remove the original visual mesh
-                    body_elem.remove(visual_mesh)
-
-                    # Create two visual capsules
-                    for i, (edge_min, edge_max) in enumerate(
-                        [(min_edge_min, min_edge_max), (max_edge_min, max_edge_max)]
-                    ):
-                        center = np.zeros(3)
-                        center[longest_axis] = min_x if i == 0 else max_x
-                        center[other_axes[0]] = (edge_min[0] + edge_max[0]) / 2
-                        center[other_axes[1]] = (edge_min[1] + edge_max[1]) / 2
-                        length = np.sqrt(np.sum((edge_max - edge_min) ** 2))
-
+                    # Update the visual mesh to be capsules instead of creating new ones
+                    if found_visual_mesh:
                         visual_capsule = ET.Element("geom")
                         visual_capsule.attrib["name"] = f"{visual_mesh_name}_capsule_{i}"
                         visual_capsule.attrib["type"] = "capsule"
