@@ -77,14 +77,14 @@ def update_collisions(
         # Find any visual meshes in this body to get material from - using naming convention
         visual_mesh_name = f"{body_name}_visual"
         visual_meshes = [geom for geom in body_elem.findall("geom") if geom.attrib.get("name") == visual_mesh_name]
-        found_visual_mesh = len(visual_meshes) == 1
-        if not found_visual_mesh:
+        if len(visual_meshes) == 0:
             logger.warning(
                 "No visual mesh found for %s in body %s."
                 "Box collision will be added, but corresponding visual will not be updated.",
                 visual_mesh_name,
                 body_name,
             )
+            visual_mesh = None
         else:
             visual_mesh = visual_meshes[0]
 
@@ -181,7 +181,7 @@ def update_collisions(
 
                 # Update the visual mesh to be a box instead of creating a new one
                 # Replace the mesh with a box
-                if found_visual_mesh:
+                if visual_mesh is not None:
                     visual_mesh.attrib["type"] = "box"
                     visual_mesh.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
                     visual_mesh.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
@@ -233,7 +233,7 @@ def update_collisions(
                     body_elem.append(capsule_geom)
 
                     # Update the visual mesh to be capsules instead of creating new ones
-                    if found_visual_mesh:
+                    if visual_mesh is not None:
                         visual_capsule = ET.Element("geom")
                         visual_capsule.attrib["name"] = f"{visual_mesh_name}_capsule_{i}"
                         visual_capsule.attrib["type"] = "capsule"
@@ -248,7 +248,7 @@ def update_collisions(
 
                         body_elem.append(visual_capsule)
 
-                if found_visual_mesh:
+                if visual_mesh is not None:
                     body_elem.remove(visual_mesh)
 
                 logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
@@ -290,7 +290,7 @@ def update_collisions(
                     body_elem.append(sphere_geom)
 
                     # Update the visual mesh to be capsules instead of creating new ones
-                    if found_visual_mesh:
+                    if visual_mesh is not None:
                         visual_sphere = ET.Element("geom")
                         visual_sphere.attrib["name"] = f"{visual_mesh_name}_sphere_{i}"
                         visual_sphere.attrib["type"] = "sphere"
@@ -305,7 +305,7 @@ def update_collisions(
 
                         body_elem.append(visual_sphere)
 
-                if found_visual_mesh:
+                if visual_mesh is not None:
                     body_elem.remove(visual_mesh)
 
                 logger.info("Updated visual mesh %s to be spheres", visual_mesh_name)
