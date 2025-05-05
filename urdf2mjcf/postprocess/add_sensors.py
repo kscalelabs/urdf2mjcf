@@ -35,12 +35,12 @@ def add_sensors(
     if sensor_elem is None:
         sensor_elem = ET.SubElement(mjcf_root, "sensor")
 
-    def add_base_sensors(site_name: str) -> None:
+    def add_sensors(site_name: str) -> None:
         ET.SubElement(
             sensor_elem,
             "framepos",
             attrib={
-                "name": "base_link_pos",
+                "name": f"{site_name}_pos",
                 "objtype": "site",
                 "objname": site_name,
             },
@@ -49,7 +49,7 @@ def add_sensors(
             sensor_elem,
             "framequat",
             attrib={
-                "name": "base_link_quat",
+                "name": f"{site_name}_quat",
                 "objtype": "site",
                 "objname": site_name,
             },
@@ -58,7 +58,7 @@ def add_sensors(
             sensor_elem,
             "framelinvel",
             attrib={
-                "name": "base_link_vel",
+                "name": f"{site_name}_vel",
                 "objtype": "site",
                 "objname": site_name,
             },
@@ -67,9 +67,17 @@ def add_sensors(
             sensor_elem,
             "frameangvel",
             attrib={
-                "name": "base_link_ang_vel",
+                "name": f"{site_name}_ang_vel",
                 "objtype": "site",
                 "objname": site_name,
+            },
+        )
+        ET.SubElement(
+            sensor_elem,
+            "velocimeter",
+            attrib={
+                "name": f"{site_name}_vel",
+                "site": site_name,
             },
         )
 
@@ -124,21 +132,20 @@ def add_sensors(
             ET.SubElement(sensor_elem, "magnetometer", attrib=mag_attrib)
 
             # Add other sensors
-            add_base_sensors(site_name)
+            add_sensors(site_name)
 
-    else:
-        # Finds the root body.
-        root_body = mjcf_root.find(f".//body[@name='{root_body_name}']")
-        if root_body is None:
-            raise ValueError(f"Root body {root_body_name} not found in the MJCF model.")
+    # Finds the root body.
+    root_body = mjcf_root.find(f".//body[@name='{root_body_name}']")
+    if root_body is None:
+        raise ValueError(f"Root body {root_body_name} not found in the MJCF model.")
 
-        # Find the site associated with the root body.
-        site_elem = root_body.find(".//site")
-        if site_elem is None:
-            site_elem = ET.SubElement(root_body, "site", name=f"{root_body_name}_site")
-        site_name = site_elem.attrib["name"]
+    # Find the site associated with the root body.
+    site_elem = root_body.find(".//site")
+    if site_elem is None:
+        site_elem = ET.SubElement(root_body, "site", name=f"{root_body_name}_site")
+    site_name = site_elem.attrib["name"]
 
-        add_base_sensors(site_name)
+    add_sensors(site_name)
 
     # Find the first <body> element to attach the default cameras instead of the root element.
     first_body = mjcf_root.find(".//body")
