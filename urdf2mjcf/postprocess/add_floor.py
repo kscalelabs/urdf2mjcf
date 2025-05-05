@@ -83,7 +83,7 @@ def add_floor_assets(root: ET.Element) -> None:
         asset = ET.SubElement(root, "asset")
 
     # Add texture for groundplane
-    texture = ET.SubElement(
+    _ = ET.SubElement(
         asset,
         "texture",
         attrib={
@@ -100,7 +100,7 @@ def add_floor_assets(root: ET.Element) -> None:
     )
 
     # Add material for groundplane
-    material = ET.SubElement(
+    _ = ET.SubElement(
         asset,
         "material",
         attrib={
