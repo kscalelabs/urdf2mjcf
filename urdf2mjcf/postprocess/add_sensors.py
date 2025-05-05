@@ -58,7 +58,7 @@ def add_sensors(
             sensor_elem,
             "framelinvel",
             attrib={
-                "name": f"{site_name}_vel",
+                "name": f"{site_name}_linvel",
                 "objtype": "site",
                 "objname": site_name,
             },
@@ -67,7 +67,7 @@ def add_sensors(
             sensor_elem,
             "frameangvel",
             attrib={
-                "name": f"{site_name}_ang_vel",
+                "name": f"{site_name}_angvel",
                 "objtype": "site",
                 "objname": site_name,
             },
@@ -80,6 +80,19 @@ def add_sensors(
                 "site": site_name,
             },
         )
+
+    # Finds the root body.
+    root_body = mjcf_root.find(f".//body[@name='{root_body_name}']")
+    if root_body is None:
+        raise ValueError(f"Root body {root_body_name} not found in the MJCF model.")
+
+    # Find the site associated with the root body.
+    site_elem = root_body.find(".//site")
+    if site_elem is None:
+        site_elem = ET.SubElement(root_body, "site", name=f"{root_body_name}_site")
+    site_name = site_elem.attrib["name"]
+
+    add_sensors(site_name)
 
     if metadata.imus:
         for imu in metadata.imus:
@@ -133,19 +146,6 @@ def add_sensors(
 
             # Add other sensors
             add_sensors(site_name)
-
-    # Finds the root body.
-    root_body = mjcf_root.find(f".//body[@name='{root_body_name}']")
-    if root_body is None:
-        raise ValueError(f"Root body {root_body_name} not found in the MJCF model.")
-
-    # Find the site associated with the root body.
-    site_elem = root_body.find(".//site")
-    if site_elem is None:
-        site_elem = ET.SubElement(root_body, "site", name=f"{root_body_name}_site")
-    site_name = site_elem.attrib["name"]
-
-    add_sensors(site_name)
 
     # Find the first <body> element to attach the default cameras instead of the root element.
     first_body = mjcf_root.find(".//body")
@@ -207,7 +207,7 @@ def main() -> None:
     parser.add_argument("mjcf_path", type=Path)
     args = parser.parse_args()
 
-    add_sensors(args.mjcf_path, "base_link")
+    add_sensors(args.mjcf_path, "base")
 
 
 if __name__ == "__main__":
