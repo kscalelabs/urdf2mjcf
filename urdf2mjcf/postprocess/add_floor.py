@@ -34,10 +34,11 @@ def add_floor_default(root: ET.Element, floor_name: str = "floor") -> None:
         geom_attrib = {
             "contype": "1",  # Enable collision
             "conaffinity": "1",  # Enable collision with all objects
+            "group": "0", # Default value for group
             "type": "plane",
-            "size": "0 0 0.05",  # Match the size from the snippet
-            "material": "groundplane",  # Use the groundplane material
-            "rgba": "1 1 1 0.3",
+            "size": "0 0 0.05",
+            "material": "groundplane",
+            "rgba": "1 1 1 0.3" # Make transparent
         }
 
         ET.SubElement(floor_default, "geom", attrib=geom_attrib)
@@ -67,13 +68,6 @@ def add_floor_geom(root: ET.Element, floor_name: str = "floor") -> None:
     floor_geom.attrib["name"] = floor_name
     floor_geom.attrib["class"] = floor_name
     floor_geom.attrib["size"] = "0 0 0.05"
-    floor_geom.attrib["type"] = "plane"
-    floor_geom.attrib["contype"] = "1"
-    floor_geom.attrib["conaffinity"] = "1"
-    floor_geom.attrib["material"] = "groundplane"
-    floor_geom.attrib["rgba"] = "1 1 1 0.3"
-
-    # Add the floor geom to the worldbody
     worldbody.append(floor_geom)
 
 
@@ -107,8 +101,7 @@ def add_floor_assets(root: ET.Element) -> None:
         "texture": "groundplane",
         "texuniform": "true",
         "texrepeat": "5 5",
-        "reflectance": "0.2",
-        "rgba": "1 1 1 0.3"
+        "reflectance": "0.2"
     })
 
 
