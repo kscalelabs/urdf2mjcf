@@ -395,7 +395,7 @@ def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
         "material",
         attrib={
             "name": "collision_material",
-            "rgba": "0.0 0.4 0.8 0.5",
+            "rgba": "0.0 0.4 0.8 0.2",
         },
     )
 
