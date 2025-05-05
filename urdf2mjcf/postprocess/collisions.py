@@ -34,6 +34,7 @@ def update_collisions(
         collision_geometries: List of collision geometries to process.
         class_name: The class name to use for the sphere geoms.
     """
+    # breakpoint()
     mjcf_path = Path(mjcf_path)
     tree = ET.parse(mjcf_path)
     root = tree.getroot()
@@ -163,9 +164,10 @@ def update_collisions(
                 box_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in box_pos)
                 box_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in box_quat)
                 box_geom.attrib["size"] = " ".join(f"{v:.6f}" for v in box_size)
+                box_geom.attrib["material"] = "collision_material"
 
                 # Copies over any other attributes from the original mesh geom.
-                for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                for key in ("class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
                     if key in mesh_geom.attrib:
                         box_geom.attrib[key] = mesh_geom.attrib[key]
 
@@ -224,10 +226,11 @@ def update_collisions(
                     capsule_geom.attrib["type"] = "capsule"
                     capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                     capsule_geom.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                    capsule_geom.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
+                    capsule_geom.attrib["size"] = f"{rad:.6f} {length / 2:.6f}"
+                    capsule_geom.attrib["material"] = "collision_material"
 
                     # Copy over any other attributes from the original mesh geom
-                    for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                    for key in ("class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
                         if key in mesh_geom.attrib:
                             capsule_geom.attrib[key] = mesh_geom.attrib[key]
 
@@ -240,7 +243,7 @@ def update_collisions(
                         visual_capsule.attrib["type"] = "capsule"
                         visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                         visual_capsule.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                        visual_capsule.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
+                        visual_capsule.attrib["size"] = f"{rad:.6f} {length / 2:.6f}"
 
                         # Copy over material and class attributes
                         for key in ("material", "class"):
@@ -281,9 +284,10 @@ def update_collisions(
                     sphere_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                     sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in (x, y, z))
                     sphere_geom.attrib["size"] = f"{rad:.6f}"
+                    sphere_geom.attrib["material"] = "collision_material"
 
                     # Copy over any other attributes from the original mesh geom
-                    for key in ("material", "class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
+                    for key in ("class", "condim", "solref", "solimp", "fluidshape", "fluidcoef", "margin"):
                         if key in mesh_geom.attrib:
                             sphere_geom.attrib[key] = mesh_geom.attrib[key]
 
@@ -327,6 +331,7 @@ def update_collisions(
                 sphere_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                 sphere_geom.attrib["pos"] = " ".join(f"{v:.6f}" for v in sphere_pos)
                 sphere_geom.attrib["size"] = f"{rad:.6f}"
+                sphere_geom.attrib["material"] = "collision_material"
 
                 body_elem.append(sphere_geom)
 

@@ -253,10 +253,11 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
         collision_default,
         "geom",
         attrib={
+            "material": "collision_material",
             "condim": str(metadata.collision_params.condim),
             "contype": str(metadata.collision_params.contype),
             "conaffinity": str(metadata.collision_params.conaffinity),
-            "group": "3",
+            "group": "1",
             "solref": " ".join(f"{x:.6g}" for x in metadata.collision_params.solref),
             "friction": " ".join(f"{x:.6g}" for x in metadata.collision_params.friction),
         },
@@ -385,6 +386,16 @@ def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
         attrib={
             "name": "default_material",
             "rgba": "0.7 0.7 0.7 1",
+        },
+    )
+
+    # Add blue transparent material for collision geometries
+    ET.SubElement(
+        asset,
+        "material",
+        attrib={
+            "name": "collision_material",
+            "rgba": "0.0 0.4 0.8 0.5",
         },
     )
 
