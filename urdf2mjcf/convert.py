@@ -247,11 +247,15 @@ def add_default(
 
         logger.info(f"Creating class for {actuator_type} with params: {actuator_data}")
 
-        joint_attrib["armature"] = str(actuator_data.armature)
-        joint_attrib["frictionloss"] = str(actuator_data.frictionloss)
-        joint_attrib["damping"] = str(actuator_data.damping)
-        joint_attrib["actuatorfrcrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
-        motor_attrib["ctrlrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
+        if actuator_data.armature is not None:
+            joint_attrib["armature"] = str(actuator_data.armature)
+        if actuator_data.frictionloss is not None:
+            joint_attrib["frictionloss"] = str(actuator_data.frictionloss)
+        if actuator_data.damping is not None:
+            joint_attrib["damping"] = str(actuator_data.damping)
+        if actuator_data.max_torque is not None:
+            joint_attrib["actuatorfrcrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
+            motor_attrib["ctrlrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
 
         logger.info(f"Adding joint attributes for {actuator_type}: {joint_attrib}")
         logger.info(f"Adding motor attributes for {actuator_type}: {motor_attrib}")
