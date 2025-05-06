@@ -208,12 +208,6 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     joint_name_to_metadata = metadata.joint_name_to_metadata
     actuator_type_to_metadata = metadata.actuator_type_to_metadata
 
-    # Type checking assertion - once we've checked, we know these are not None
-    if joint_name_to_metadata is None:
-        raise ValueError("Joint name to metadata is not set")
-    if actuator_type_to_metadata is None:
-        raise ValueError("Actuator type to metadata is not set")
-
     default = ET.Element("default")
 
     # Main robot class defaults
