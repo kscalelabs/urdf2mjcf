@@ -209,8 +209,10 @@ def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
     actuator_type_to_metadata = metadata.actuator_type_to_metadata
 
     # Type checking assertion - once we've checked, we know these are not None
-    assert joint_name_to_metadata is not None
-    assert actuator_type_to_metadata is not None
+    if joint_name_to_metadata is None:
+        raise ValueError("Joint name to metadata is not set")
+    if actuator_type_to_metadata is None:
+        raise ValueError("Actuator type to metadata is not set")
 
     default = ET.Element("default")
 
@@ -507,7 +509,8 @@ def convert_urdf_to_mjcf(
 
     joint_name_to_metadata = metadata.joint_name_to_metadata
     # Type checking assertion
-    assert joint_name_to_metadata is not None
+    if joint_name_to_metadata is None:
+        raise ValueError("Joint name to metadata is not set")
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
