@@ -16,16 +16,40 @@ class CollisionParams(BaseModel):
     solref: list[float] = [0.005, 1.0]
     friction: list[float] = [1.0, 0.01, 0.01]
 
-
 class JointParam(BaseModel):
-    name: str
-    suffixes: list[str]
-    armature: float | None = None
-    frictionloss: float | None = None
-    actuatorfrc: float | None = None
+    actuator_type: str | None = None
+    id: int
+    nn_id: int
+    kp: float
+    kd: float
+    soft_torque_limit: float
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "JointParam":
+        """Create JointParam from a plain dictionary."""
+        return cls(**data)
 
     class Config:
         extra = "forbid"
+        
+class ActuatorParam(BaseModel):
+    actuator_type: str
+    sysid: str = ""
+    max_torque: float = 0.0
+    max_velocity: float = 0.0
+    armature: float = 0.0
+    damping: float | None = None
+    frictionloss: float = 0.0
+    vin: float | None = None
+    kt: float | None = None
+    R: float | None = None
+    max_pwm: float | None = None
+    error_gain: float | None = None
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "ActuatorParam":
+        """Create ActuatorParam from a plain dictionary."""
+        return cls.model_validate(data)
 
 
 class ImuSensor(BaseModel):
@@ -79,9 +103,8 @@ class CollisionGeometry(BaseModel):
 class ConversionMetadata(BaseModel):
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
-    joint_params: list[JointParam] | None = None
     # Maps joint names to their metadata including actuator_type
-    joint_name_to_metadata: dict[str, dict[str, int | float | str]] | None = None
+    joint_name_to_metadata: dict[str, JointParam] | None = None
     imus: list[ImuSensor] = []
     cameras: list[CameraSensor] = [
         CameraSensor(
@@ -111,7 +134,7 @@ class ConversionMetadata(BaseModel):
     backlash: float | None = None
     backlash_damping: float = 0.01
     # Maps actuator types to their parameters
-    actuator_type_to_metadata: dict[str, dict[str, int | float | str]] | None = None
+    actuator_type_to_metadata: dict[str, ActuatorParam] | None = None
 
     class Config:
         extra = "forbid"
