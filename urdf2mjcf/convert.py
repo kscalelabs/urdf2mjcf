@@ -198,10 +198,14 @@ def add_compiler(root: ET.Element) -> None:
     root.insert(0, element)
 
 
-def add_default(root: ET.Element, metadata: ConversionMetadata, joint_metadata: dict[str, JointParam] | None = None, actuator_params: dict[str, ActuatorParam | dict[str, int | float | str]] | None = None) -> None:
+def add_default(
+    root: ET.Element,
+    metadata: ConversionMetadata,
+    joint_metadata: dict[str, JointParam] | None = None,
+    actuator_params: dict[str, ActuatorParam] | None = None,
+) -> None:
     """Add default settings with hierarchical structure for robot components."""
     # Ensure we have valid data structures to work with
-
 
     default = ET.Element("default")
 
@@ -234,13 +238,13 @@ def add_default(root: ET.Element, metadata: ConversionMetadata, joint_metadata: 
         if actuator_type not in actuator_params:
             logger.warning(f"Missing actuator type metadata for {actuator_type}, skipping")
             continue
-            
+
         actuator_data = actuator_params[str(actuator_type)]
-        
+
         # Convert dictionary to ActuatorParam if needed
         if not isinstance(actuator_data, ActuatorParam):
             actuator_data = ActuatorParam.from_dict(actuator_data)
-        
+
         logger.info(f"Creating class for {actuator_type} with params: {actuator_data}")
 
         joint_attrib["armature"] = str(actuator_data.armature)
@@ -480,7 +484,6 @@ def convert_urdf_to_mjcf(
     if metadata is None:
         metadata = ConversionMetadata()
 
-
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
     robot: ET.Element = urdf_tree.getroot()
@@ -654,7 +657,7 @@ def convert_urdf_to_mjcf(
 
                 # Only for slide and hinge joints
                 j_attrib["ref"] = "0.0"
-                
+
                 if j_name not in joint_metadata:
                     raise ValueError(f"Joint {j_name} not found in joint_metadata")
                 actuator_type_value = joint_metadata[j_name].actuator_type

@@ -16,6 +16,7 @@ class CollisionParams(BaseModel):
     solref: list[float] = [0.005, 1.0]
     friction: list[float] = [1.0, 0.01, 0.01]
 
+
 class JointParam(BaseModel):
     actuator_type: str | None = None
     id: int
@@ -31,7 +32,8 @@ class JointParam(BaseModel):
 
     class Config:
         extra = "forbid"
-        
+
+
 class ActuatorParam(BaseModel):
     actuator_type: str
     sysid: str = ""
@@ -45,7 +47,7 @@ class ActuatorParam(BaseModel):
     R: float | None = None
     max_pwm: float | None = None
     error_gain: float | None = None
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "ActuatorParam":
         """Create ActuatorParam from a plain dictionary."""
