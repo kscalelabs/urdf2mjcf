@@ -80,6 +80,8 @@ class ConversionMetadata(BaseModel):
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
     joint_params: list[JointParam] | None = None
+    # Maps joint names to their metadata including actuator_type
+    joint_name_to_metadata: dict[str, dict[str, int | float | str]] | None = None
     imus: list[ImuSensor] = []
     cameras: list[CameraSensor] = [
         CameraSensor(
@@ -108,6 +110,8 @@ class ConversionMetadata(BaseModel):
     add_floor: bool = False
     backlash: float | None = None
     backlash_damping: float = 0.01
+    # Maps actuator types to their parameters
+    actuator_type_to_metadata: dict[str, dict[str, int | float | str]] | None = None
 
     class Config:
         extra = "forbid"
