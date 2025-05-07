@@ -454,8 +454,7 @@ def rpy_to_quat(rpy_str: str) -> str:
 def _get_empty_joint_and_actuator_metadata(
     robot_elem: ET.Element,
 ) -> tuple[dict[str, JointMetadata], dict[str, ActuatorMetadata]]:
-    """
-    Create placeholder metadata for joints and actuators if none are provided.
+    """Create placeholder metadata for joints and actuators if none are provided.
 
     Each joint is simply assigned a "motor" actuator type, which has no other parameters.
     """
@@ -521,6 +520,7 @@ def convert_urdf_to_mjcf(
     if joint_metadata is None and actuator_metadata is None:
         logger.warning("No metadata supplied, falling back to single empty 'motor' class.")
         joint_metadata, actuator_metadata = _get_empty_joint_and_actuator_metadata(robot)
+    assert joint_metadata is not None and actuator_metadata is not None
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
