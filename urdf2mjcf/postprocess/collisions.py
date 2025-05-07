@@ -225,7 +225,7 @@ def update_collisions(
                     capsule_geom.attrib["type"] = "capsule"
                     capsule_geom.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                     capsule_geom.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                    capsule_geom.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
+                    capsule_geom.attrib["size"] = f"{rad:.6f} {length / 2:.6f}"
                     capsule_geom.attrib["material"] = "collision_material"
 
                     # Copy over any other attributes from the original mesh geom
@@ -242,7 +242,7 @@ def update_collisions(
                         visual_capsule.attrib["type"] = "capsule"
                         visual_capsule.attrib["quat"] = " ".join(f"{v:.6f}" for v in sphere_quat)
                         visual_capsule.attrib["fromto"] = " ".join(f"{v:.6f}" for v in capsule_fromto)
-                        visual_capsule.attrib["size"] = f"{rad:.6f} {length/2:.6f}"
+                        visual_capsule.attrib["size"] = f"{rad:.6f} {length / 2:.6f}"
 
                         # Copy over material and class attributes
                         for key in ("material", "class"):

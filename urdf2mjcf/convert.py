@@ -865,31 +865,6 @@ def convert_urdf_to_mjcf(
         )
     add_sensors(mjcf_path, root_link_name, metadata=metadata)
 
-    # if metadata.
-    # tree = ET.parse(mjcf_path)
-    # worldbody = tree.getroot().find("worldbody")
-    # base_body = worldbody.find("body")
-
-    # identity: list[list[float]] = [
-    #     [1.0, 0.0, 0.0, 0.0],
-    #     [0.0, 1.0, 0.0, 0.0],
-    #     [0.0, 0.0, 1.0, 0.0],
-    #     [0.0, 0.0, 0.0, 1.0],
-    # ]
-    # min_z: float = compute_min_z(base_body, identity)
-    # computed_offset: float = -min_z
-    # logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
-
-    # # Moves the robot body to the computed offset.
-    # body_pos = base_body.attrib.get("pos", "0 0 0")
-    # body_pos = [float(x) for x in body_pos.split()]
-
-    # body_pos[2] += computed_offset
-    # base_body.attrib["pos"] = " ".join(f"{x:.8f}" for x in body_pos)
-    # base_body.attrib["childclass"] = ROBOT_CLASS
-
-    # save_xml(mjcf_path, tree)
-
 
 def main() -> None:
     """Parse command-line arguments and execute the URDF to MJCF conversion."""
