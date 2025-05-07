@@ -1,0 +1,244 @@
+{
+    "joint_name_to_metadata": {
+      "imu": {
+        "actuator_type": "motor",
+        "nn_id": 0,
+        "id": 0,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_HIP_R": {
+        "actuator_type": "motor", 
+        "nn_id": 1,
+        "id": 1,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_HIP_P": {
+        "actuator_type": "motor",
+        "nn_id": 2,
+        "id": 2,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_HIP_Y": {
+        "actuator_type": "motor",
+        "nn_id": 3,
+        "id": 3,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_KNEE": {
+        "actuator_type": "motor",
+        "nn_id": 4,
+        "id": 4,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_ANKLE_P": {
+        "actuator_type": "motor",
+        "nn_id": 5,
+        "id": 5,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RLEG_ANKLE_R": {
+        "actuator_type": "motor",
+        "nn_id": 6,
+        "id": 6,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_SHOULDER_P": {
+        "actuator_type": "motor",
+        "nn_id": 7,
+        "id": 7,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_SHOULDER_R": {
+        "actuator_type": "motor",
+        "nn_id": 8,
+        "id": 8,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_SHOULDER_Y": {
+        "actuator_type": "motor",
+        "nn_id": 9,
+        "id": 9,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_ELBOW": {
+        "actuator_type": "motor",
+        "nn_id": 10,
+        "id": 10,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_WRIST_Y": {
+        "actuator_type": "motor",
+        "nn_id": 11,
+        "id": 11,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_WRIST_P": {
+        "actuator_type": "motor",
+        "nn_id": 12,
+        "id": 12,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "RARM_WRIST_R": {
+        "actuator_type": "motor",
+        "nn_id": 13,
+        "id": 13,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_HIP_R": {
+        "actuator_type": "motor",
+        "nn_id": 14,
+        "id": 14,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_HIP_P": {
+        "actuator_type": "motor",
+        "nn_id": 15,
+        "id": 15,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_HIP_Y": {
+        "actuator_type": "motor",
+        "nn_id": 16,
+        "id": 16,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_KNEE": {
+        "actuator_type": "motor",
+        "nn_id": 17,
+        "id": 17,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_ANKLE_P": {
+        "actuator_type": "motor",
+        "nn_id": 18,
+        "id": 18,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LLEG_ANKLE_R": {
+        "actuator_type": "motor",
+        "nn_id": 19,
+        "id": 19,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_SHOULDER_P": {
+        "actuator_type": "motor",
+        "nn_id": 20,
+        "id": 20,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_SHOULDER_R": {
+        "actuator_type": "motor",
+        "nn_id": 21,
+        "id": 21,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_SHOULDER_Y": {
+        "actuator_type": "motor",
+        "nn_id": 22,
+        "id": 22,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_ELBOW": {
+        "actuator_type": "motor",
+        "nn_id": 23,
+        "id": 23,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_WRIST_Y": {
+        "actuator_type": "motor",
+        "nn_id": 24,
+        "id": 24,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_WRIST_P": {
+        "actuator_type": "motor",
+        "nn_id": 25,
+        "id": 25,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "LARM_WRIST_R": {
+        "actuator_type": "motor",
+        "nn_id": 26,
+        "id": 26,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "WAIST_P": {
+        "actuator_type": "motor",
+        "nn_id": 27,
+        "id": 27,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "WAIST_R": {
+        "actuator_type": "motor",
+        "nn_id": 28,
+        "id": 28,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      },
+      "CHEST": {
+        "actuator_type": "motor",
+        "nn_id": 29,
+        "id": 29,
+        "kp": "40.0",
+        "kd": "2.0",
+        "soft_torque_limit": "10.0"
+      }
+    }
+}

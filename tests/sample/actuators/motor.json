@@ -1,0 +1,14 @@
+{
+    "actuator_type": "motor",
+    "sysid": "",
+    "max_torque": 10.0,
+    "max_velocity": 5.0,
+    "armature": 0.001,
+    "damping": 0.1,
+    "frictionloss": 0.1,
+    "vin": null,
+    "kt": null,
+    "R": null,
+    "max_pwm": null,
+    "error_gain": null
+}
