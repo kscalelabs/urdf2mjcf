@@ -233,7 +233,7 @@ def add_default(
         motor_attrib = {}
         if actuator_type not in actuator_params:
             raise ValueError(f"Missing actuator type metadata for {actuator_type}")
-        
+
         actuator_data = actuator_params[str(actuator_type)]
         if actuator_data.armature is not None:
             joint_attrib["armature"] = str(actuator_data.armature)
@@ -245,10 +245,14 @@ def add_default(
             joint_attrib["actuatorfrcrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
             motor_attrib["ctrlrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
 
-
         ET.SubElement(sub_default, "joint", attrib=joint_attrib)
         ET.SubElement(sub_default, "motor", attrib=motor_attrib)
-        logger.info("Added actuator class for %s: with joint attrib %s and motor attrib %s", actuator_type, joint_attrib, motor_attrib)
+        logger.info(
+            "Added actuator class for %s: with joint attrib %s and motor attrib %s",
+            actuator_type,
+            joint_attrib,
+            motor_attrib,
+        )
 
     # Visual geometry class
     visual_default = ET.SubElement(
@@ -826,7 +830,6 @@ def convert_urdf_to_mjcf(
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
     for actuator_joint in actuator_joints:
-
         # The class name is the actuator type
         attrib: dict[str, str] = {"joint": actuator_joint.name}
         if actuator_joint.name not in joint_metadata:
