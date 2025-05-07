@@ -515,7 +515,12 @@ def convert_urdf_to_mjcf(
         metadata = ConversionMetadata()
 
     if joint_metadata is None or actuator_metadata is None:
-        logger.warning("No metadata supplied, falling back to single empty 'motor' class.")
+        missing = []
+        if joint_metadata is None:
+            missing.append("joint")
+        if actuator_metadata is None:
+            missing.append("actuator")
+        logger.warning("Missing %s metadata, falling back to single empty 'motor' class.", " and ".join(missing))
         joint_metadata, actuator_metadata = _get_empty_joint_and_actuator_metadata(robot)
     assert joint_metadata is not None and actuator_metadata is not None
 
