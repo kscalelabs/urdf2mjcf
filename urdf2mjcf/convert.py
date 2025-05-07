@@ -720,14 +720,8 @@ def convert_urdf_to_mjcf(
         # Process visual geometries.
         visuals = link.findall("visual")
         for idx, visual in enumerate(visuals):
-            origin_visual = visual.find("origin")
-            if origin_visual is not None:
-                pos_geom = origin_visual.attrib.get("xyz", "0 0 0")
-                rpy_geom = origin_visual.attrib.get("rpy", "0 0 0")
-                quat_geom = rpy_to_quat(rpy_geom)
-            else:
-                pos_geom = "0 0 0"
-                quat_geom = "1 0 0 0"
+            pos_geom = "0 0 0"
+            quat_geom = "1 0 0 0"
             name = f"{link_name}_visual"
             if len(visuals) > 1:
                 name = f"{name}_{idx}"
