@@ -202,24 +202,28 @@ def add_default(
     root: ET.Element,
     metadata: ConversionMetadata,
     joint_metadata: dict[str, JointMetadata] | None = None,
-    actuator_params: dict[str, ActuatorMetadata] | None = None,
+    actuator_metadata: dict[str, ActuatorMetadata] | None = None,
 ) -> None:
     """Add default settings with hierarchical structure for robot components."""
-
     default = ET.Element("default")
+
+    if joint_metadata is None:
+        raise ValueError("Missing joint metadata")
+    if actuator_metadata is None:
+        raise ValueError("Missing actuator metadata")
 
     # Main robot class defaults
     robot_default = ET.SubElement(default, "default", attrib={"class": ROBOT_CLASS})
 
     # Get the set of actuator types to make the classes at the top of the mjcf
     actuator_types = set()
-    for joint_name, joint_metadata in joint_metadata.items():
-        if joint_metadata is None:
-            raise ValueError(f"Missing metadata for joint: {joint_name}")
-        if not isinstance(joint_metadata, JointMetadata):
-            raise ValueError(f"Metadata for joint {joint_name} is not a JointMetadata instance")
-        actuator_types.add(joint_metadata.actuator_type)
-        logger.info("Joint %s uses actuator type: %s", joint_name, joint_metadata.actuator_type)
+    for current_joint_name, current_joint_metadata in joint_metadata.items():
+        if current_joint_metadata is None:
+            raise ValueError(f"Missing metadata for joint: {current_joint_name}")
+        if not isinstance(current_joint_metadata, JointMetadata):
+            raise ValueError(f"Metadata for joint {current_joint_name} is not a JointMetadata instance")
+        actuator_types.add(current_joint_metadata.actuator_type)
+        logger.info("Joint %s uses actuator type: %s", current_joint_name, current_joint_metadata.actuator_type)
     logger.info("Found %d actuator types in metadata: %s", len(actuator_types), actuator_types)
 
     # Create default classes for each actuator type
@@ -231,10 +235,10 @@ def add_default(
 
         joint_attrib = {}
         motor_attrib = {}
-        if actuator_type not in actuator_params:
+        if actuator_type not in actuator_metadata:
             raise ValueError(f"Missing actuator type metadata for {actuator_type}")
 
-        actuator_data = actuator_params[str(actuator_type)]
+        actuator_data = actuator_metadata[str(actuator_type)]
         if actuator_data.armature is not None:
             joint_attrib["armature"] = str(actuator_data.armature)
         if actuator_data.frictionloss is not None:
@@ -455,7 +459,7 @@ def convert_urdf_to_mjcf(
     metadata_file: str | Path | None = None,
     *,
     joint_metadata: dict[str, JointMetadata] | None = None,
-    actuator_metadata: dict[str, ActuatorMetadata | dict[str, int | float | str]] | None = None,
+    actuator_metadata: dict[str, ActuatorMetadata] | None = None,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
@@ -465,6 +469,8 @@ def convert_urdf_to_mjcf(
         copy_meshes: If True, mesh files will be copied.
         metadata: Optional conversion metadata.
         metadata_file: Optional path to metadata file.
+        joint_metadata: Optional joint metadata.
+        actuator_metadata: Optional actuator metadata.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".mjcf")
@@ -479,6 +485,11 @@ def convert_urdf_to_mjcf(
             metadata = ConversionMetadata.model_validate_json(f.read())
     if metadata is None:
         metadata = ConversionMetadata()
+
+    if joint_metadata is None:
+        raise ValueError("Missing joint metadata")
+    if actuator_metadata is None:
+        raise ValueError("Missing actuator metadata")
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
