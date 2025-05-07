@@ -451,6 +451,32 @@ def rpy_to_quat(rpy_str: str) -> str:
     return f"{qw} {qx} {qy} {qz}"
 
 
+def _get_empty_joint_and_actuator_metadata(
+    robot_elem: ET.Element,
+) -> tuple[dict[str, JointMetadata], dict[str, ActuatorMetadata]]:
+    """
+    Create placeholder metadata for joints and actuators if none are provided.
+
+    Each joint is simply assigned a "motor" actuator type, which has no other parameters.
+    """
+    joint_meta: dict[str, JointMetadata] = {}
+    for idx, joint in enumerate(robot_elem.findall("joint")):
+        name = joint.attrib.get("name")
+        if not name:
+            continue
+        joint_meta[name] = JointMetadata(
+            actuator_type="motor",
+            id=idx,
+            nn_id=idx,
+            kp=1.0,
+            kd=1.0,
+            soft_torque_limit=1.0,
+        )
+
+    actuator_meta = {"motor": ActuatorMetadata(actuator_type="motor")}
+    return joint_meta, actuator_meta
+
+
 def convert_urdf_to_mjcf(
     urdf_path: str | Path,
     mjcf_path: str | Path | None = None,
@@ -478,6 +504,9 @@ def convert_urdf_to_mjcf(
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
 
+    urdf_tree: ET.ElementTree = ET.parse(urdf_path)
+    robot: ET.Element = urdf_tree.getroot()
+
     if metadata_file is not None and metadata is not None:
         raise ValueError("Cannot specify both metadata and metadata_file")
     elif metadata_file is not None:
@@ -486,10 +515,12 @@ def convert_urdf_to_mjcf(
     if metadata is None:
         metadata = ConversionMetadata()
 
-    if joint_metadata is None:
-        raise ValueError("Missing joint metadata")
-    if actuator_metadata is None:
-        raise ValueError("Missing actuator metadata")
+    if (joint_metadata is None) ^ (actuator_metadata is None):
+        raise ValueError("Must provide *both* joint_metadata and actuator_metadata, or neither.")
+
+    if joint_metadata is None and actuator_metadata is None:
+        logger.warning("No metadata supplied, falling back to single empty 'motor' class.")
+        joint_metadata, actuator_metadata = _get_empty_joint_and_actuator_metadata(robot)
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
@@ -666,6 +697,7 @@ def convert_urdf_to_mjcf(
                 j_attrib["ref"] = "0.0"
 
                 if j_name not in joint_metadata:
+                    breakpoint()
                     raise ValueError(f"Joint {j_name} not found in joint_metadata")
                 actuator_type_value = joint_metadata[j_name].actuator_type
                 j_attrib["class"] = str(actuator_type_value)

@@ -37,11 +37,11 @@ class JointMetadata(BaseModel):
 class ActuatorMetadata(BaseModel):
     actuator_type: str
     sysid: str = ""
-    max_torque: float = 0.0
-    max_velocity: float = 0.0
-    armature: float = 0.0
+    max_torque: float | None = None
+    max_velocity: float | None = None
+    armature: float | None = None
     damping: float | None = None
-    frictionloss: float = 0.0
+    frictionloss: float | None = None
     vin: float | None = None
     kt: float | None = None
     R: float | None = None
