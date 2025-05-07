@@ -122,7 +122,7 @@ def mat_mult(mat_a: list[list[float]], mat_b: list[list[float]]) -> list[list[fl
     return result
 
 
-DEFAULT_FOOT_MESH_BOTTOM_OFFSET: float = 0.1
+DEFAULT_FOOT_MESH_BOTTOM_OFFSET: float = 0.05
 
 
 def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> float:
