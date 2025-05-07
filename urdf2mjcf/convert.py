@@ -11,7 +11,7 @@ from pathlib import Path
 
 import colorlogging
 
-from urdf2mjcf.model import ConversionMetadata, JointParam
+from urdf2mjcf.model import ActuatorMetadata, ConversionMetadata, JointMetadata
 from urdf2mjcf.postprocess.add_backlash import add_backlash
 from urdf2mjcf.postprocess.add_floor import add_floor
 from urdf2mjcf.postprocess.add_sensors import add_sensors
@@ -198,33 +198,65 @@ def add_compiler(root: ET.Element) -> None:
     root.insert(0, element)
 
 
-def add_default(root: ET.Element, metadata: ConversionMetadata) -> None:
+def add_default(
+    root: ET.Element,
+    metadata: ConversionMetadata,
+    joint_metadata: dict[str, JointMetadata] | None = None,
+    actuator_metadata: dict[str, ActuatorMetadata] | None = None,
+) -> None:
     """Add default settings with hierarchical structure for robot components."""
-    joint_params: list[JointParam] = metadata.joint_params or []
-
     default = ET.Element("default")
+
+    if joint_metadata is None:
+        raise ValueError("Missing joint metadata")
+    if actuator_metadata is None:
+        raise ValueError("Missing actuator metadata")
 
     # Main robot class defaults
     robot_default = ET.SubElement(default, "default", attrib={"class": ROBOT_CLASS})
 
-    for joint_param in joint_params:
-        sub_default = ET.SubElement(robot_default, "default", attrib={"class": joint_param.name})
+    # Get the set of actuator types to make the classes at the top of the mjcf
+    actuator_types = set()
+    for current_joint_name, current_joint_metadata in joint_metadata.items():
+        if current_joint_metadata is None:
+            raise ValueError(f"Missing metadata for joint: {current_joint_name}")
+        if not isinstance(current_joint_metadata, JointMetadata):
+            raise ValueError(f"Metadata for joint {current_joint_name} is not a JointMetadata instance")
+        actuator_types.add(current_joint_metadata.actuator_type)
+        logger.info("Joint %s uses actuator type: %s", current_joint_name, current_joint_metadata.actuator_type)
+    logger.info("Found %d actuator types in metadata: %s", len(actuator_types), actuator_types)
 
-        # Joint attributes.
-        attrib: dict[str, str] = {}
-        if joint_param.armature is not None:
-            attrib["armature"] = str(joint_param.armature)
-        if joint_param.frictionloss is not None:
-            attrib["frictionloss"] = str(joint_param.frictionloss)
-        if joint_param.actuatorfrc is not None:
-            attrib["actuatorfrcrange"] = f"-{joint_param.actuatorfrc} {joint_param.actuatorfrc}"
-        ET.SubElement(sub_default, "joint", attrib=attrib)
+    # Create default classes for each actuator type
+    for actuator_type in actuator_types:
+        if actuator_type is None:
+            raise ValueError(f"Actuator type: {actuator_type} cannot be None")
 
-        # Position attributes.
-        attrib = {}
-        if joint_param.actuatorfrc is not None:
-            attrib["ctrlrange"] = f"-{joint_param.actuatorfrc} {joint_param.actuatorfrc}"
-        ET.SubElement(sub_default, "motor", attrib=attrib)
+        sub_default = ET.SubElement(robot_default, "default", attrib={"class": str(actuator_type)})
+
+        joint_attrib = {}
+        motor_attrib = {}
+        if actuator_type not in actuator_metadata:
+            raise ValueError(f"Missing actuator type metadata for {actuator_type}")
+
+        actuator_data = actuator_metadata[str(actuator_type)]
+        if actuator_data.armature is not None:
+            joint_attrib["armature"] = str(actuator_data.armature)
+        if actuator_data.frictionloss is not None:
+            joint_attrib["frictionloss"] = str(actuator_data.frictionloss)
+        if actuator_data.damping is not None:
+            joint_attrib["damping"] = str(actuator_data.damping)
+        if actuator_data.max_torque is not None:
+            joint_attrib["actuatorfrcrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
+            motor_attrib["ctrlrange"] = f"-{actuator_data.max_torque} {actuator_data.max_torque}"
+
+        ET.SubElement(sub_default, "joint", attrib=joint_attrib)
+        ET.SubElement(sub_default, "motor", attrib=motor_attrib)
+        logger.info(
+            "Added actuator class for %s: with joint attrib %s and motor attrib %s",
+            actuator_type,
+            joint_attrib,
+            motor_attrib,
+        )
 
     # Visual geometry class
     visual_default = ET.SubElement(
@@ -419,12 +451,40 @@ def rpy_to_quat(rpy_str: str) -> str:
     return f"{qw} {qx} {qy} {qz}"
 
 
+def _get_empty_joint_and_actuator_metadata(
+    robot_elem: ET.Element,
+) -> tuple[dict[str, JointMetadata], dict[str, ActuatorMetadata]]:
+    """Create placeholder metadata for joints and actuators if none are provided.
+
+    Each joint is simply assigned a "motor" actuator type, which has no other parameters.
+    """
+    joint_meta: dict[str, JointMetadata] = {}
+    for idx, joint in enumerate(robot_elem.findall("joint")):
+        name = joint.attrib.get("name")
+        if not name:
+            continue
+        joint_meta[name] = JointMetadata(
+            actuator_type="motor",
+            id=idx,
+            nn_id=idx,
+            kp=1.0,
+            kd=1.0,
+            soft_torque_limit=1.0,
+        )
+
+    actuator_meta = {"motor": ActuatorMetadata(actuator_type="motor")}
+    return joint_meta, actuator_meta
+
+
 def convert_urdf_to_mjcf(
     urdf_path: str | Path,
     mjcf_path: str | Path | None = None,
     copy_meshes: bool = False,
     metadata: ConversionMetadata | None = None,
     metadata_file: str | Path | None = None,
+    *,
+    joint_metadata: dict[str, JointMetadata] | None = None,
+    actuator_metadata: dict[str, ActuatorMetadata] | None = None,
 ) -> None:
     """Converts a URDF file to an MJCF file.
 
@@ -434,12 +494,17 @@ def convert_urdf_to_mjcf(
         copy_meshes: If True, mesh files will be copied.
         metadata: Optional conversion metadata.
         metadata_file: Optional path to metadata file.
+        joint_metadata: Optional joint metadata.
+        actuator_metadata: Optional actuator metadata.
     """
     urdf_path = Path(urdf_path)
     mjcf_path = Path(mjcf_path) if mjcf_path is not None else urdf_path.with_suffix(".mjcf")
     if not urdf_path.exists():
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    urdf_tree: ET.ElementTree = ET.parse(urdf_path)
+    robot: ET.Element = urdf_tree.getroot()
 
     if metadata_file is not None and metadata is not None:
         raise ValueError("Cannot specify both metadata and metadata_file")
@@ -449,7 +514,13 @@ def convert_urdf_to_mjcf(
     if metadata is None:
         metadata = ConversionMetadata()
 
-    joint_params: list[JointParam] = metadata.joint_params or []
+    if (joint_metadata is None) ^ (actuator_metadata is None):
+        raise ValueError("Must provide *both* joint_metadata and actuator_metadata, or neither.")
+
+    if joint_metadata is None and actuator_metadata is None:
+        logger.warning("No metadata supplied, falling back to single empty 'motor' class.")
+        joint_metadata, actuator_metadata = _get_empty_joint_and_actuator_metadata(robot)
+    assert joint_metadata is not None and actuator_metadata is not None
 
     # Parse the URDF file.
     urdf_tree: ET.ElementTree = ET.parse(urdf_path)
@@ -492,7 +563,7 @@ def convert_urdf_to_mjcf(
     add_option(mjcf_root)
     add_visual(mjcf_root)
     add_assets(mjcf_root, materials)
-    add_default(mjcf_root, metadata)
+    add_default(mjcf_root, metadata, joint_metadata, actuator_metadata)
 
     # Creates the worldbody element.
     worldbody = ET.SubElement(mjcf_root, "worldbody")
@@ -625,12 +696,12 @@ def convert_urdf_to_mjcf(
                 # Only for slide and hinge joints
                 j_attrib["ref"] = "0.0"
 
-                for joint_param in joint_params:
-                    if any(j_name.endswith(suffix) for suffix in joint_param.suffixes):
-                        j_attrib["class"] = joint_param.name
-                        break
-                else:
-                    raise ValueError(f"Joint {j_name} not found in metadata")
+                if j_name not in joint_metadata:
+                    breakpoint()
+                    raise ValueError(f"Joint {j_name} not found in joint_metadata")
+                actuator_type_value = joint_metadata[j_name].actuator_type
+                j_attrib["class"] = str(actuator_type_value)
+                logger.info("Joint %s assigned to class: %s", j_name, actuator_type_value)
 
                 limit = joint.find("limit")
                 if limit is not None:
@@ -720,14 +791,8 @@ def convert_urdf_to_mjcf(
         # Process visual geometries.
         visuals = link.findall("visual")
         for idx, visual in enumerate(visuals):
-            origin_visual = visual.find("origin")
-            if origin_visual is not None:
-                pos_geom = origin_visual.attrib.get("xyz", "0 0 0")
-                rpy_geom = origin_visual.attrib.get("rpy", "0 0 0")
-                quat_geom = rpy_to_quat(rpy_geom)
-            else:
-                pos_geom = "0 0 0"
-                quat_geom = "1 0 0 0"
+            pos_geom = "0 0 0"
+            quat_geom = "1 0 0 0"
             name = f"{link_name}_visual"
             if len(visuals) > 1:
                 name = f"{name}_{idx}"
@@ -805,17 +870,14 @@ def convert_urdf_to_mjcf(
     # Replace the actuator block with one that uses positional control.
     actuator_elem = ET.SubElement(mjcf_root, "actuator")
     for actuator_joint in actuator_joints:
+        # The class name is the actuator type
         attrib: dict[str, str] = {"joint": actuator_joint.name}
+        if actuator_joint.name not in joint_metadata:
+            raise ValueError(f"Actuator {actuator_joint.name} not found in joint_metadata")
+        actuator_type_value = joint_metadata[actuator_joint.name].actuator_type
 
-        # Gets the joint name by checking the suffixes.
-        for joint_param in joint_params:
-            if any(actuator_joint.name.endswith(suffix) for suffix in joint_param.suffixes):
-                joint_class_name = joint_param.name
-                break
-        else:
-            raise ValueError(f"Joint {actuator_joint.name} has no matching link")
-
-        attrib["class"] = joint_class_name
+        attrib["class"] = str(actuator_type_value)
+        logger.info(f"Creating actuator {actuator_joint.name}_ctrl with class: {actuator_type_value}")
 
         ET.SubElement(actuator_elem, "motor", attrib={"name": f"{actuator_joint.name}_ctrl", **attrib})
 

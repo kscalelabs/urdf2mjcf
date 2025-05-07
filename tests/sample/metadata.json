@@ -1,15 +1,4 @@
 {
-  "joint_params": [
-    {
-      "name": "motor",
-      "armature": 0.001,
-      "frictionloss": 0.1,
-      "actuatorfrc": 10.0,
-      "suffixes": [
-        ""
-      ]
-    }
-  ],
   "imus": [
     {
       "body_name": "IMU",

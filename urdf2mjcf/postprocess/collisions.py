@@ -139,6 +139,16 @@ def update_collisions(
         min_x, min_y, min_z = local_vertices.min(axis=0)
         max_x, max_y, max_z = local_vertices.max(axis=0)
 
+        # Optional per-axis offset to translate the generated capsules.
+        offset = np.array(
+            [
+                collision_geom_info.offset_x,
+                collision_geom_info.offset_y,
+                collision_geom_info.offset_z,
+            ],
+            dtype=np.float64,
+        )
+
         match collision_geom_info.collision_type:
             case CollisionType.BOX:
                 # Create box with same dimensions as original mesh bounding box
@@ -219,6 +229,10 @@ def update_collisions(
                     capsule_fromto[ax[2]] = val_2
                     capsule_fromto[ax[2] + 3] = val_2
 
+                    # Apply global offset
+                    capsule_fromto[:3] += offset
+                    capsule_fromto[3:] += offset
+
                     # Create the capsule geom
                     capsule_geom = ET.Element("geom")
                     capsule_geom.attrib["name"] = f"{mesh_geom_name}_capsule_{i}"
@@ -252,7 +266,6 @@ def update_collisions(
                         body_elem.append(visual_capsule)
 
                 if visual_mesh is not None:
-                    body_elem.remove(visual_mesh)
                     logger.info("Updated visual mesh %s to be capsules", visual_mesh_name)
 
             case CollisionType.CORNER_SPHERES:

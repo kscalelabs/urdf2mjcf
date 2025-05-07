@@ -17,15 +17,41 @@ class CollisionParams(BaseModel):
     friction: list[float] = [1.0, 0.01, 0.01]
 
 
-class JointParam(BaseModel):
-    name: str
-    suffixes: list[str]
-    armature: float | None = None
-    frictionloss: float | None = None
-    actuatorfrc: float | None = None
+class JointMetadata(BaseModel):
+    actuator_type: str | None = None
+    id: int
+    nn_id: int
+    kp: float
+    kd: float
+    soft_torque_limit: float
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "JointMetadata":
+        """Create JointParam from a plain dictionary."""
+        return cls(**data)
 
     class Config:
         extra = "forbid"
+
+
+class ActuatorMetadata(BaseModel):
+    actuator_type: str
+    sysid: str = ""
+    max_torque: float | None = None
+    max_velocity: float | None = None
+    armature: float | None = None
+    damping: float | None = None
+    frictionloss: float | None = None
+    vin: float | None = None
+    kt: float | None = None
+    R: float | None = None
+    max_pwm: float | None = None
+    error_gain: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ActuatorMetadata":
+        """Create ActuatorParam from a plain dictionary."""
+        return cls.model_validate(data)
 
 
 class ImuSensor(BaseModel):
@@ -74,13 +100,17 @@ class CollisionGeometry(BaseModel):
     sphere_radius: float = 0.01
     axis_order: tuple[int, int, int] = (0, 1, 2)
     flip_axis: bool = False
+    offset_x: float = 0.0
+    offset_y: float = 0.0
+    offset_z: float = 0.0
 
 
 class ConversionMetadata(BaseModel):
     adjust_base_offset: bool = True
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
-    joint_params: list[JointParam] | None = None
+    joint_name_to_metadata: dict[str, JointMetadata] | None = None
+    actuator_type_to_metadata: dict[str, ActuatorMetadata] | None = None
     imus: list[ImuSensor] = []
     cameras: list[CameraSensor] = [
         CameraSensor(
