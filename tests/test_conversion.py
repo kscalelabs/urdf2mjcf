@@ -1,8 +1,8 @@
 """Defines a dummy test."""
 
+import json
 import tempfile
 from pathlib import Path
-import json
 
 import pytest
 
