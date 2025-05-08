@@ -834,6 +834,7 @@ def convert_urdf_to_mjcf(
         return body
 
     # Build the robot body hierarchy starting from the root link.
+
     robot_body = build_body(root_link_name, None, actuator_joints)
     if robot_body is None:
         raise ValueError("Failed to build robot body")
@@ -846,21 +847,23 @@ def convert_urdf_to_mjcf(
         attrib={"name": root_site_name, "pos": "0 0 0", "quat": "1 0 0 0"},
     )
 
-    # Automatically compute the base offset using the model's minimum z coordinate.
-    identity: list[list[float]] = [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-    min_z: float = compute_min_z(robot_body, identity)
-    computed_offset: float = -min_z
-    logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
-
     # Moves the robot body to the computed offset.
     body_pos = robot_body.attrib.get("pos", "0 0 0")
     body_pos = [float(x) for x in body_pos.split()]
-    body_pos[2] += computed_offset
+
+    if metadata.adjust_base_offset:
+        # Automatically compute the base offset using the model's minimum z coordinate.
+        identity: list[list[float]] = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+        min_z: float = compute_min_z(robot_body, identity)
+        computed_offset: float = -min_z
+        logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
+        body_pos[2] += computed_offset
+
     robot_body.attrib["pos"] = " ".join(f"{x:.8f}" for x in body_pos)
     robot_body.attrib["childclass"] = ROBOT_CLASS
 

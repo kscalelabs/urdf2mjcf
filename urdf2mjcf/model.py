@@ -106,6 +106,7 @@ class CollisionGeometry(BaseModel):
 
 
 class ConversionMetadata(BaseModel):
+    adjust_base_offset: bool = True
     freejoint: bool = True
     collision_params: CollisionParams = CollisionParams()
     joint_name_to_metadata: dict[str, JointMetadata] | None = None
