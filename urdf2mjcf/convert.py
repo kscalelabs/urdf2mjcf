@@ -122,9 +122,6 @@ def mat_mult(mat_a: list[list[float]], mat_b: list[list[float]]) -> list[list[fl
     return result
 
 
-DEFAULT_FOOT_MESH_BOTTOM_OFFSET: float = 0.05
-
-
 def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> float:
     """Recursively computes the minimum Z value in the world frame.
 
@@ -164,9 +161,7 @@ def compute_min_z(body: ET.Element, parent_transform: list[list[float]]) -> floa
                 r = float(child.attrib.get("size", "0"))
                 candidate = z - r
             elif geom_type == "mesh":
-                body_name: str = body.attrib.get("name", "").lower()
-                extra: float = DEFAULT_FOOT_MESH_BOTTOM_OFFSET if "foot" in body_name else 0.0
-                candidate = z - extra
+                candidate = z
             else:
                 candidate = z
 
@@ -854,7 +849,7 @@ def convert_urdf_to_mjcf(
         [0.0, 0.0, 0.0, 1.0],
     ]
     min_z: float = compute_min_z(robot_body, identity)
-    computed_offset: float = -min_z
+    computed_offset: float = -min_z + metadata.height_offset
     logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
 
     # Moves the robot body to the computed offset.

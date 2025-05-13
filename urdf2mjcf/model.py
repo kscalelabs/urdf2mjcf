@@ -138,6 +138,7 @@ class ConversionMetadata(BaseModel):
     add_floor: bool = False
     backlash: float | None = None
     backlash_damping: float = 0.01
+    height_offset: float = 0.0
 
     class Config:
         extra = "forbid"
