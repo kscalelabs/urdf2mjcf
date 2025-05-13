@@ -122,6 +122,65 @@ def mat_mult(mat_a: list[list[float]], mat_b: list[list[float]]) -> list[list[fl
     return result
 
 
+def compute_min_z(body: ET.Element, parent_transform: list[list[float]] | None = None) -> float:
+    """Recursively computes the minimum Z value in the world frame.
+
+    This is used to compute the starting height of the robot.
+
+    Args:
+        body: The current body element.
+        parent_transform: The transform of the parent body.
+
+    Returns:
+        The minimum Z value in the world frame.
+    """
+    if parent_transform is None:
+        parent_transform = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    pos_str: str = body.attrib.get("pos", "0 0 0")
+    quat_str: str = body.attrib.get("quat", "1 0 0 0")
+    body_tf: list[list[float]] = mat_mult(parent_transform, build_transform(pos_str, quat_str))
+    local_min_z: float = float("inf")
+
+    for child in body:
+        if child.tag == "geom":
+            gpos_str: str = child.attrib.get("pos", "0 0 0")
+            gquat_str: str = child.attrib.get("quat", "1 0 0 0")
+            geom_tf: list[list[float]] = build_transform(gpos_str, gquat_str)
+            total_tf: list[list[float]] = mat_mult(body_tf, geom_tf)
+
+            # The translation part of T_total is in column 3.
+            z: float = total_tf[2][3]
+            geom_type: str = child.attrib.get("type", "")
+            if geom_type == "box":
+                size_vals: list[float] = list(map(float, child.attrib.get("size", "0 0 0").split()))
+                half_height: float = size_vals[2] if len(size_vals) >= 3 else 0.0
+                candidate: float = z - half_height
+            elif geom_type == "cylinder":
+                size_vals = list(map(float, child.attrib.get("size", "0 0").split()))
+                half_length: float = size_vals[1] if len(size_vals) >= 2 else 0.0
+                candidate = z - half_length
+            elif geom_type == "sphere":
+                r = float(child.attrib.get("size", "0"))
+                candidate = z - r
+            elif geom_type == "mesh":
+                candidate = z
+            else:
+                candidate = z
+
+            local_min_z = min(candidate, local_min_z)
+
+        elif child.tag == "body":
+            child_min: float = compute_min_z(child, body_tf)
+            local_min_z = min(child_min, local_min_z)
+
+    return local_min_z
+
+
 def add_compiler(root: ET.Element) -> None:
     """Add a compiler element to the MJCF root.
 
@@ -786,6 +845,18 @@ def convert_urdf_to_mjcf(
     robot_body = build_body(root_link_name, None, actuator_joints)
     if robot_body is None:
         raise ValueError("Failed to build robot body")
+
+    # Gets the minimum z coordinate of the robot body.
+    min_z: float = compute_min_z(robot_body)
+    computed_offset: float = -min_z + metadata.height_offset
+    logger.info("Auto-detected base offset: %s (min z = %s)", computed_offset, min_z)
+
+    # Moves the robot body to the computed offset.
+    body_pos = robot_body.attrib.get("pos", "0 0 0")
+    body_pos = [float(x) for x in body_pos.split()]
+    body_pos[2] += computed_offset
+    robot_body.attrib["pos"] = " ".join(f"{x:.8f}" for x in body_pos)
+
     robot_body.attrib["childclass"] = ROBOT_CLASS
     worldbody.append(robot_body)
 
