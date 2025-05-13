@@ -887,9 +887,15 @@ def main() -> None:
         type=str,
         help="A JSON file containing conversion metadata (joint params and sensors).",
     )
+    parser.add_argument(
+        "--log-level",
+        type=int,
+        default=logging.INFO,
+        help="The log level to use.",
+    )
     args = parser.parse_args()
 
-    colorlogging.configure()
+    colorlogging.configure(level=args.log_level)
 
     # Parse the raw metadata from the command line arguments.
     raw_metadata: dict | None = None
