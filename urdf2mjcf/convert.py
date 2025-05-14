@@ -391,12 +391,13 @@ def add_visual(root: ET.Element) -> None:
     # )
 
 
-def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
+def add_assets(root: ET.Element, materials: dict[str, str], visualize_collision_meshes: bool = True) -> None:
     """Add texture and material assets to the MJCF root.
 
     Args:
         root: The MJCF root element.
         materials: Dictionary mapping material names to RGBA color strings.
+        visualize_collision_meshes: If True, add a visual element for collision meshes.
     """
     asset = root.find("asset")
     if asset is None:
@@ -429,7 +430,7 @@ def add_assets(root: ET.Element, materials: dict[str, str]) -> None:
         "material",
         attrib={
             "name": "collision_material",
-            "rgba": "0.0 0.4 0.8 0.2",
+            "rgba": "0.0 0.4 0.8 0.2" if visualize_collision_meshes else "0.0 0.0 0.0 0.0",
         },
     )
 
@@ -566,7 +567,7 @@ def convert_urdf_to_mjcf(
     add_compiler(mjcf_root)
     add_option(mjcf_root)
     add_visual(mjcf_root)
-    add_assets(mjcf_root, materials)
+    add_assets(mjcf_root, materials, metadata.visualize_collision_meshes)
     add_default(mjcf_root, metadata, joint_metadata, actuator_metadata)
 
     # Creates the worldbody element.

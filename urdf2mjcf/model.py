@@ -139,6 +139,7 @@ class ConversionMetadata(BaseModel):
     backlash: float | None = None
     backlash_damping: float = 0.01
     height_offset: float = 0.0
+    visualize_collision_meshes: bool = True
 
     class Config:
         extra = "forbid"
