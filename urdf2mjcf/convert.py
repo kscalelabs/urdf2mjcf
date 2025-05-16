@@ -358,6 +358,30 @@ def add_contact(root: ET.Element, robot: ET.Element) -> None:
             )
 
 
+def add_weld_constraints(root: ET.Element, metadata: ConversionMetadata) -> None:
+    """Add weld constraints to the MJCF root.
+
+    Args:
+        root: The MJCF root element.
+        metadata: The conversion metadata containing weld constraints.
+    """
+    if not metadata.weld_constraints:
+        return
+
+    equality = ET.SubElement(root, "equality")
+    for weld in metadata.weld_constraints:
+        ET.SubElement(
+            equality,
+            "weld",
+            attrib={
+                "body1": weld.body1,
+                "body2": weld.body2,
+                "solimp": " ".join(f"{x:.6g}" for x in weld.solimp),
+                "solref": " ".join(f"{x:.6g}" for x in weld.solref),
+            },
+        )
+
+
 def add_option(root: ET.Element) -> None:
     """Add an option element to the MJCF root.
 
@@ -702,7 +726,6 @@ def convert_urdf_to_mjcf(
                 j_attrib["ref"] = "0.0"
 
                 if j_name not in joint_metadata:
-                    breakpoint()
                     raise ValueError(f"Joint {j_name} not found in joint_metadata")
                 actuator_type_value = joint_metadata[j_name].actuator_type
                 j_attrib["class"] = str(actuator_type_value)
@@ -891,6 +914,9 @@ def convert_urdf_to_mjcf(
         ET.SubElement(asset_elem, "mesh", attrib={"name": mesh_name, "file": filename})
 
     add_contact(mjcf_root, robot)
+
+    # Add weld constraints if specified in metadata
+    add_weld_constraints(mjcf_root, metadata)
 
     # Copy mesh files if requested.
     if copy_meshes:
