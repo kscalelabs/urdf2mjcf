@@ -430,7 +430,7 @@ def add_assets(root: ET.Element, materials: dict[str, str], visualize_collision_
         "material",
         attrib={
             "name": "collision_material",
-            "rgba": "0.0 0.4 0.8 0.2" if visualize_collision_meshes else "0.0 0.0 0.0 0.0",
+            "rgba": "1.0 0.28 0.1 0.9" if visualize_collision_meshes else "0.0 0.0 0.0 0.0",
         },
     )
 
