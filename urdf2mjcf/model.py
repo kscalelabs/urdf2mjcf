@@ -24,6 +24,8 @@ class JointMetadata(BaseModel):
     kp: float
     kd: float
     soft_torque_limit: float
+    min_angle_deg: float
+    max_angle_deg: float
 
     @classmethod
     def from_dict(cls, data: dict) -> "JointMetadata":

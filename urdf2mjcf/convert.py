@@ -473,6 +473,8 @@ def _get_empty_joint_and_actuator_metadata(
             kp=1.0,
             kd=1.0,
             soft_torque_limit=1.0,
+            min_angle_deg=0.0,
+            max_angle_deg=0.0,
         )
 
     actuator_meta = {"motor": ActuatorMetadata(actuator_type="motor")}
