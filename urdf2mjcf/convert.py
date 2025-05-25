@@ -291,6 +291,7 @@ def add_default(
             "condim": str(metadata.collision_params.condim),
             "contype": str(metadata.collision_params.contype),
             "conaffinity": str(metadata.collision_params.conaffinity),
+            "priority": str(metadata.collision_params.priority),
             "group": "1",
             "solref": " ".join(f"{x:.6g}" for x in metadata.collision_params.solref),
             "friction": " ".join(f"{x:.6g}" for x in metadata.collision_params.friction),
