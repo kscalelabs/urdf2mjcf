@@ -89,14 +89,16 @@ class ExplicitFloorContacts(BaseModel):
 
 class WeldConstraint(BaseModel):
     """Represents a weld constraint between two bodies.
-    Useful for locking bodies in the air (suspending). By default, body2 is set to "world" to create a fixed constraint in global space.
+
+    Useful for locking bodies in the air (suspending).
+    By default, body2 is set to "world" to create a fixed constraint in global space.
     Default parameters approximately lock the body rigidly in place -- stiffer than Mujoco defaults.
     """
-    
+
     body1: str
     body2: str = "world"
-    solimp: list[float] = [0.95, 0.99, 0.005, 0.5, 2] # Very tight width, aggressive response.
-    solref: list[float] = [0.005, 1.0] # critical damping 1.0, very quick time constant to return to static
+    solimp: list[float] = [0.95, 0.99, 0.005, 0.5, 2]  # Very tight width, aggressive response.
+    solref: list[float] = [0.005, 1.0]  # critical damping 1.0, very quick time constant to return to static
 
 
 class CollisionType(enum.Enum):
