@@ -291,6 +291,7 @@ def add_default(
             "condim": str(metadata.collision_params.condim),
             "contype": str(metadata.collision_params.contype),
             "conaffinity": str(metadata.collision_params.conaffinity),
+            "priority": str(metadata.collision_params.priority),
             "group": "1",
             "solref": " ".join(f"{x:.6g}" for x in metadata.collision_params.solref),
             "friction": " ".join(f"{x:.6g}" for x in metadata.collision_params.friction),
@@ -454,7 +455,7 @@ def add_assets(root: ET.Element, materials: dict[str, str], visualize_collision_
         "material",
         attrib={
             "name": "collision_material",
-            "rgba": "0.0 0.4 0.8 0.2" if visualize_collision_meshes else "0.0 0.0 0.0 0.0",
+            "rgba": "1.0 0.28 0.1 0.9" if visualize_collision_meshes else "0.0 0.0 0.0 0.0",
         },
     )
 
@@ -497,6 +498,8 @@ def _get_empty_joint_and_actuator_metadata(
             kp=1.0,
             kd=1.0,
             soft_torque_limit=1.0,
+            min_angle_deg=0.0,
+            max_angle_deg=0.0,
         )
 
     actuator_meta = {"motor": ActuatorMetadata(actuator_type="motor")}
