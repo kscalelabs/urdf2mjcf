@@ -205,11 +205,7 @@ def add_sensors(
 
     # Add force sensors.
     for fs in metadata.force_sensors:
-        try:
-            site_elem = find_site(body_name=fs.body_name, site_name=fs.site_name, site_metadata=metadata.sites)
-        except BodyNotFoundError as e:
-            logger.warning(f"Skipping force sensor {fs.name} on body {fs.body_name} and site {fs.site_name}: {e}")
-            continue
+        site_elem = find_site(body_name=fs.body_name, site_name=fs.site_name, site_metadata=metadata.sites)
 
         # Add the force sensor element
         fs_name = fs.name if fs.name else f"{fs.site_name}_force"
@@ -223,11 +219,7 @@ def add_sensors(
         ET.SubElement(sensor_elem, "force", attrib=fs_attrib)
 
     for ts in metadata.touch_sensors:
-        try:
-            site_elem = find_site(body_name=ts.body_name, site_name=ts.site_name, site_metadata=metadata.sites)
-        except BodyNotFoundError as e:
-            logger.warning(f"Skipping touch sensor {ts.name} on body {ts.body_name} and site {ts.site_name}: {e}")
-            continue
+        site_elem = find_site(body_name=ts.body_name, site_name=ts.site_name, site_metadata=metadata.sites)
 
         # Add the touch sensor element
         ts_name = ts.name if ts.name else f"{ts.site_name}_touch"
