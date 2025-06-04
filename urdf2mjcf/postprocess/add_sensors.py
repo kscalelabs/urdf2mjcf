@@ -100,17 +100,17 @@ def add_sensors(
         # Find or create the site within the body
         site_elem = link_body.find(f"./site[@name='{site_name}']")
         if site_elem is None:
-            site_metadata = next(
+            site_meta = next(
                 (s for s in site_metadata if s.name == site_name), SiteMetadata(body_name=body_name, name=site_name)
             )
 
             site_elem = ET.SubElement(link_body, "site", name=site_name)
-            if site_metadata.size is not None:
-                site_elem.attrib["size"] = " ".join(str(x) for x in site_metadata.size)
-            if site_metadata.pos is not None:
-                site_elem.attrib["pos"] = " ".join(str(x) for x in site_metadata.pos)
-            if site_metadata.site_type is not None:
-                site_elem.attrib["type"] = site_metadata.site_type
+            if site_meta.size is not None:
+                site_elem.attrib["size"] = " ".join(str(x) for x in site_meta.size)
+            if site_meta.pos is not None:
+                site_elem.attrib["pos"] = " ".join(str(x) for x in site_meta.pos)
+            if site_meta.site_type is not None:
+                site_elem.attrib["type"] = site_meta.site_type
             logger.info(f"Created site '{site_name}' on body '{body_name}'.")
 
         return site_elem

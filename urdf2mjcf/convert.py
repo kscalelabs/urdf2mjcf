@@ -533,8 +533,10 @@ def convert_urdf_to_mjcf(
         raise FileNotFoundError(f"URDF file not found: {urdf_path}")
     mjcf_path.parent.mkdir(parents=True, exist_ok=True)
 
-    urdf_tree: ET.ElementTree = ET.parse(urdf_path)
-    robot: ET.Element = urdf_tree.getroot()
+    urdf_tree = ET.parse(urdf_path)
+    robot = urdf_tree.getroot()
+    if robot is None:
+        raise ValueError("URDF file has no root element")
 
     if metadata_file is not None and metadata is not None:
         raise ValueError("Cannot specify both metadata and metadata_file")
@@ -553,10 +555,6 @@ def convert_urdf_to_mjcf(
         logger.warning("Missing %s metadata, falling back to single empty 'motor' class.", " and ".join(missing))
         joint_metadata, actuator_metadata = _get_empty_joint_and_actuator_metadata(robot)
     assert joint_metadata is not None and actuator_metadata is not None
-
-    # Parse the URDF file.
-    urdf_tree: ET.ElementTree = ET.parse(urdf_path)
-    robot: ET.Element = urdf_tree.getroot()
 
     # Parse materials from URDF - both from root level and from link visuals
     materials: dict[str, str] = {}

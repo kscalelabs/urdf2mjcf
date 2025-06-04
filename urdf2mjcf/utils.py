@@ -1,5 +1,7 @@
 """Defines utility functions."""
 
+from __future__ import annotations
+
 import io
 import re
 import xml.etree.ElementTree as ET
@@ -52,10 +54,18 @@ def iter_meshes(
             yield visual_mesh, collision_mesh
 
 
-def save_xml(path: str | Path | io.StringIO, tree: ET.ElementTree | ET.Element) -> None:
+def save_xml(path: str | Path | io.StringIO, tree: ET.ElementTree[ET.Element] | ET.Element) -> None:
+    """Save XML to file with pretty formatting."""
+    element: ET.Element
     if isinstance(tree, ET.ElementTree):
-        tree = tree.getroot()
-    xmlstr = minidom.parseString(ET.tostring(tree)).toprettyxml(indent="  ")
+        root = tree.getroot()
+        if root is None:
+            raise ValueError("ElementTree has no root element")
+        element = root
+    else:
+        element = tree
+
+    xmlstr = minidom.parseString(ET.tostring(element)).toprettyxml(indent="  ")
     xmlstr = re.sub(r"\n\s*\n", "\n", xmlstr)
 
     # Add newlines between second-level nodes
