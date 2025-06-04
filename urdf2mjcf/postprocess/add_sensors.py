@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BodyNotFoundError(ValueError):
     """Exception raised when a body is not found in the MJCF model."""
 
-    def __init__(self, body_name: str, available_bodies: list[str]):
+    def __init__(self, body_name: str, available_bodies: list[str]) -> None:
         self.body_name = body_name
         self.available_bodies = available_bodies
         super().__init__(f"Body '{body_name}' not found in the MJCF model. Available bodies: {available_bodies}")
