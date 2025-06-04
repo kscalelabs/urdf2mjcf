@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 Angle = Literal["radian", "degree"]
+SiteType = Literal["sphere", "capsule", "ellipsoid", "cylinder", "box"]
 
 
 class CollisionParams(BaseModel):
@@ -57,6 +58,14 @@ class ActuatorMetadata(BaseModel):
         return cls.model_validate(data)
 
 
+class SiteMetadata(BaseModel):
+    name: str
+    body_name: str
+    site_type: SiteType | None = None
+    size: list[float] | None = None
+    pos: list[float] | None = None
+
+
 class ImuSensor(BaseModel):
     body_name: str
     pos: list[float] | None = None
@@ -76,6 +85,15 @@ class CameraSensor(BaseModel):
 
 class ForceSensor(BaseModel):
     """Represents a force sensor attached to a site."""
+
+    body_name: str
+    site_name: str
+    name: str | None = None
+    noise: float | None = None
+
+
+class TouchSensor(BaseModel):
+    """Represents a touch sensor attached to a site."""
 
     body_name: str
     site_name: str
@@ -144,7 +162,9 @@ class ConversionMetadata(BaseModel):
             fovy=90,
         ),
     ]
+    sites: list[SiteMetadata] = []
     force_sensors: list[ForceSensor] = []
+    touch_sensors: list[TouchSensor] = []
     collision_geometries: list[CollisionGeometry] | None = None
     explicit_contacts: ExplicitFloorContacts | None = None
     weld_constraints: list[WeldConstraint] = []
