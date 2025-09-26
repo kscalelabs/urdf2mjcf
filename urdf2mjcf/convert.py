@@ -742,6 +742,11 @@ def convert_urdf_to_mjcf(
                     j_attrib["axis"] = axis_elem.attrib.get("xyz", "0 0 1")
                 ET.SubElement(body, "joint", attrib=j_attrib)
 
+                # Add a named site for this joint
+                site_name = f"{j_name}_site"
+                site_attrib = {"name": site_name, "pos": "0 0 0", "quat": "1 0 0 0"}
+                ET.SubElement(body, "site", attrib=site_attrib)
+
                 actuator_joints.append(
                     ParsedJointParams(
                         name=j_name,
