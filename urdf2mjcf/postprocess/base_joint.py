@@ -58,10 +58,6 @@ def fix_base_joint(mjcf_path: str | Path, add_freejoint: bool = True) -> None:
         logger.warning("Robot body does not have a joint; adding a freejoint")
         robot_body.insert(0, ET.Element("freejoint", attrib={"name": "floating_base"}))
 
-    # Removes the base inertial element.
-    if (base_inertial := robot_body.find("inertial")) is not None:
-        robot_body.remove(base_inertial)
-
     # Save changes
     save_xml(mjcf_path, tree)
 
